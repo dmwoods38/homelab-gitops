@@ -13,47 +13,76 @@ spec:
       values: |
         configs:
           cm:
+            # Allow kustomize exec/alpha plugins (needed for ksops generator)
             kustomize.buildOptions: "--enable-alpha-plugins --enable-exec"
 
         repoServer:
-          extraVolumes:
+          # --- 1) Volumes for custom tools and age keys ---
+          volumes:
+            - name: custom-tools
+              emptyDir: {}
             - name: sops-age
               secret:
                 secretName: sops-age
 
-          extraVolumeMounts:
+          # --- 2) Mount those volumes into the repo-server container ---
+          volumeMounts:
+            - name: custom-tools
+              mountPath: /custom-tools
             - name: sops-age
               mountPath: /home/argocd/.config/sops/age
               readOnly: true
 
-          extraEnv:
-            - name: SOPS_AGE_KEY_FILE
-              value: /home/argocd/.config/sops/age/keys.txt
-          volumes:
-            - name: custom-tools
-              emptyDir: {}
+          # --- 3) Environment for plugin + sops ---
+          env:
+            # Make sure our custom bin dir is on PATH
+            - name: PATH
+              value: "/custom-tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
+            # Tell kustomize where to look for exec plugins (ksops)
+            - name: KUSTOMIZE_PLUGIN_HOME
+              value: "/custom-tools/plugin"
+
+            # Tell sops where the age private key is
+            - name: SOPS_AGE_KEY_FILE
+              value: "/home/argocd/.config/sops/age/keys.txt"
+
+          # --- 4) InitContainer to download & unpack ksops tar.gz correctly ---
           initContainers:
             - name: install-ksops
-              image: viaductoss/ksops:v4.3.3
+              image: alpine:3.19
               command: ["/bin/sh", "-c"]
               args:
                 - |
-                  echo "Installing KSOPS...";
-                  mv ksops /custom-tools/;
-                  mv kustomize /custom-tools/;
-                  echo "Done.";
-              volumeMounts:
-                - mountPath: /custom-tools
-                  name: custom-tools
+                  set -ex
+                  apk add --no-cache curl tar ca-certificates
 
-          volumeMounts:
-            - mountPath: /usr/local/bin/kustomize
-              name: custom-tools
-              subPath: kustomize
-            - mountPath: /usr/local/bin/ksops
-              name: custom-tools
-              subPath: ksops
+                  mkdir -p /custom-tools/bin
+                  mkdir -p /custom-tools/plugin/viaduct.ai/v1/ksops
+
+                  echo "Downloading ksops..."
+                  curl -L \
+                    https://github.com/viaduct-ai/kustomize-sops/releases/latest/download/ksops-linux-amd64.tar.gz \
+                    -o /tmp/ksops.tgz
+
+                  echo "Extracting ksops..."
+                  tar -xzf /tmp/ksops.tgz -C /custom-tools/bin
+
+                  # Handle possible 'ksops' or 'ksops-linux-amd64' file name from tar
+                  if [ -f /custom-tools/bin/ksops-linux-amd64 ]; then
+                    mv /custom-tools/bin/ksops-linux-amd64 /custom-tools/bin/ksops
+                  fi
+
+                  chmod +x /custom-tools/bin/ksops
+
+                  echo "Wiring ksops as kustomize exec plugin..."
+                  ln -s /custom-tools/bin/ksops /custom-tools/plugin/viaduct.ai/v1/ksops/ksops
+
+                  echo "KSOPS installed and plugin wired."
+              volumeMounts:
+                - name: custom-tools
+                  mountPath: /custom-tools
+
   destination: 
     server: https://kubernetes.default.svc
     namespace: argocd
@@ -63,4 +92,3 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-
