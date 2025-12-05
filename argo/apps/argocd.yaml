@@ -16,6 +16,19 @@ spec:
             kustomize.buildOptions: "--enable-alpha-plugins --enable-exec"
 
         repoServer:
+          extraVolumes:
+            - name: sops-age
+              secret:
+                secretName: sops-age
+
+          extraVolumeMounts:
+            - name: sops-age
+              mountPath: /home/argocd/.config/sops/age
+              readOnly: true
+
+          extraEnv:
+            - name: SOPS_AGE_KEY_FILE
+              value: /home/argocd/.config/sops/age/keys.txt
           volumes:
             - name: custom-tools
               emptyDir: {}
