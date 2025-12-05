@@ -6,9 +6,24 @@ metadata:
 spec:
   project: default
   source: 
-    repoURL: https://github.com/dmwoods38/homelab-gitops.git
-    targetRevision: main
-    path: platform/metallb
+    repoURL: https://metallb.github.io/metallb
+    chart: metallb
+    targetRevision: 0.15.2
+    helm:
+      values: |
+        controller:
+          replicaCount: 1
+        speaker: 
+          replicaCount: 1
+        crds:
+          enabled: true
+
+        configInLine:
+          address-pools:
+            - name: traefik-pool
+              protocol: layer2
+              addresses: 
+                - 192.168.2.224-192.168.2.254
   destination: 
     server: https://kubernetes.default.svc
     namespace: metallb-system
