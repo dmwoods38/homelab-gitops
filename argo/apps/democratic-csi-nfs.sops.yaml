@@ -34,7 +34,7 @@ spec:
                             protocol: https
                             host: 192.168.2.30
                             port: 443
-                            apiKey: ENC[AES256_GCM,data:PVUNrsR37/3WGgBYBhv3kyRxJVz7e31dGLnyXE9Bymplvn3Pnso9PqeK+ufAbx50bys+ijtFkityw4WmwjgLzpM6,iv:eKKzL9sGmZMg+bY24py6lQf8fZRteKTmh/CbU7LHy90=,tag:XMIRF3z5WrFuYRvv93gecw==,type:str]
+                            apiKey: ENC[AES256_GCM,data:2O3uoxSv3K/F7+zJXsPV209ZnAKZKJkWZ+uLB3P1BaCbmLUeZIjDXJyS3aVqJIzD+NDWCy1SoI5YKHH/553KLhGH,iv:6FDjsCBsJfM3HjK6MkqdGsehpkjuKHrtsl1B+u4sP6U=,tag:SKtJRWwlkOSyTB1r5EXkXg==,type:str]
                             allowInsecure: true
                         zfs:
                             datasetParentName: default/smb-share
@@ -65,13 +65,13 @@ sops:
         - recipient: age1033ld5gtn23xsz9lateded3kpssp62hkhjq9vs3jza3ad63uggnsqw5xhd
           enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBGQTZmYlVjVG1MRGlOajRU
-            T2t5NlVHTzgwb2FCNGhtaFREMGdtNlFEVDFjCmF3K0JYUjRZS0pHNXQxdmlGQ1pI
-            QS9GV2xJdUNvZWMzTXMvZEhmZzE4bzQKLS0tIExtS3p0dkh1S3RvbktvTjU1U3Ix
-            RFJWb1NiS0VhMjZTMk10WlNYRGdLeG8KBBsyIT+MAHNC4O9DVZBXNV282Zd3YRiF
-            4/D47xXcnp1gNXXKx+86SP+RyjXgFc+xs4glnZ4PrZeJZhQleI/xUg==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSAyNUdpZ0pkbnBwbHBTSjZ1
+            djVNbndtLzFoOWg5ZXBwTnBjN3RPelpxQ2hBCkFjellzckVHcGVYY0JhMU5zYVk1
+            TjNrUm4xL0EvVFA3RkVZa2c1bmhaTU0KLS0tIEFTbmdWUXJPOWtnVHVZOXRnMWRl
+            OVJ6UFd1UXdLbHdMSjFDS3p0QVpzUTAKlo9OKzwH7tjh+FlsHAaoy1rsyOLQkTXD
+            IKZZqCh7WtqInBIgVFf2txTfpHJuBxNynIIgzteA+NnzNSolvIIbhA==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2025-12-05T21:12:46Z"
-    mac: ENC[AES256_GCM,data:tEq9WK2PZfRi1EC3bYUgcGiK64lnZ6P0O0hLrSWjqir575HDIejGSRmNJkLHh5IRrOCTH7s1GLZHg7rDXkiyGiIagpY9DWOFpjk7q9thgyZTksozSQ3a0PoArGoyO2KAANXXz3p55J/HFulpJ7ie5BbsnC3yALzJVlFRWp6Y5W8=,iv:BT52yZQbExBlDqt8ASb/30Vin7Igi8T4AbF3Uu9xNVQ=,tag:HQvRbSzTYGoO3KbTZhrrag==,type:str]
+    lastmodified: "2025-12-05T21:19:03Z"
+    mac: ENC[AES256_GCM,data:7uVDmA+Y5NWwts5+eSh5Iqhm0B4f816bxhHMtyk9l8B7OzeMZ7F2/H4EGNHcORIq8WcbDg7XVgLPeK6e9wBWlBqsYVdNl2Aho9+lfJVCrjMuUEWhnP9BcD7sWSE67tUSLKt8PM/41dTCHo5zCX+1QB5ftID3jFTQK2YSPlBhcCU=,iv:i5KxPd57UldLcHutirSVKG1kRVg0UFyHTVg19BPRhgk=,tag:7UCAu0sz/S1OvqraxzGHbw==,type:str]
     encrypted_regex: ^(data|stringData|apiKey)$
     version: 3.11.0
