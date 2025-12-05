@@ -7,4 +7,4 @@ resources:
   - clusterissuer-letsencrypt-http.yaml
 
 generators:
-  - ksops-sescret-generator.yaml
+  - ksops-secret-generator.yaml
