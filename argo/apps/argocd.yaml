@@ -18,10 +18,6 @@ spec:
           params:
             server.insecure: "true"
 
-        server:
-          ingress:
-            enabled: false
-
         repoServer:
           # 1) Volumes: plugin dir + age key
           volumes:
