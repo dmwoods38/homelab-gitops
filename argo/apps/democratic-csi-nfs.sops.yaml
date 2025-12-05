@@ -1,0 +1,77 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+    name: democratic-csi-nfs
+    namespace: argocd
+spec:
+    project: default
+    source:
+        repoURL: https://democratic-csi.github.io/charts/
+        chart: democratic-csi
+        targetRevision: 0.14.7
+        helm:
+            valuesObject:
+                csiDriver:
+                    name: org.democratic-csi.nfs
+                storageClasses:
+                    - name: truenas-nfs
+                      defaultClass: false
+                      reclaimPolicy: Delete
+                      volumeBindingMode: Immediate
+                      allowVolumeExpansion: true
+                      parameters:
+                        fsType: nfs
+                      mountOptions:
+                        - nfsvers=4
+                        - nolock
+                        - soft
+                volumeSnapshotClasses:
+                    - name: truenas-nfs
+                driver:
+                    config:
+                        driver: freenas-api-nfs
+                        httpConnection:
+                            protocol: http
+                            host: 192.168.2.30
+                            port: 80
+                            apiKey: ENC[AES256_GCM,data:SeY7A2E6UPG/AMYohBiWqdr3M9Ms98+nsWnG2Z9e86bDR7QgIT5jgQgNKQTuUHvTnbPxkamtwja4yOx8SuSyYYaE,iv:cQJIKSNgK/myCxz/R/vlmSIVmGAbnlL2wy2Yo60ciNs=,tag:kYhGJ7JgoeotrQYlajw/7g==,type:str]
+                            allowInsecure: true
+                        zfs:
+                            datasetParentName: default/smb-share
+                            detachedSnapshotsDatasetParentName: default/smb-share-snapshots
+                            datasetEnableQuotas: true
+                            datasetEnableReservation: false
+                            datasetPermissionsMode: "0770"
+                            datasetPermissionsUser: 0
+                            datasetPermissionsGroup: 0
+                        nfs:
+                            shareHost: 192.168.2.30
+                            shareAlldirs: false
+                            shareAllowedHosts: []
+                            shareAllowedNetworks: []
+                            shareMaprootUser: root
+                            shareMaprootGroup: root
+    destination:
+        server: https://kubernetes.default.svc
+        namespace: democratic-csi
+    syncPolicy:
+        automated:
+            prune: true
+            selfHeal: true
+        syncOptions:
+            - CreateNamespace=true
+sops:
+    age:
+        - recipient: age1033ld5gtn23xsz9lateded3kpssp62hkhjq9vs3jza3ad63uggnsqw5xhd
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBGY0UzSjh3Z1VOdlJUcERX
+            YjFKV2p4NmErK3kxY3pidGxMSVBqaE9heEM4Cmt6bEFkRVdQcjk5N3lDc0xFcVgw
+            QnJnZlhqbHdkNkFucUk5U0V3NzBLa2MKLS0tIE52aWJZSG8zT3lFY0s5QXQ3NjUy
+            aVQzZTlTQjh6OW1Vb0Yrd21nMGs5blEKAnhNseN4NBxkz29cDrIfHSN+CC5NgT5A
+            gjrFSQjx5wKhUjvsyGllyfOMK11aOG8MWM4fZDOVhKp4h8FLfmvA7g==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2025-12-05T21:07:48Z"
+    mac: ENC[AES256_GCM,data:c4ST0rvcRoc0DxVL8ZVO7a0nhgRvwC6Djs9IXzjR4W9ZWePjJDc3piT12HBffEcW8v73py+CS4KdT1WKRNpppnqnzj0+9MVYlR1s+jr23OneIp5pKi+DfMaqo9rNVeOK0NZ/HFuvT0EGA+dddmX5cojFEaJimu5LRKcGRZCXSxs=,iv:BgkwNg6BS6FBYVZtfVq2ZKU8WIGIfD88dwzv0nwsZW8=,tag:MHMgKUHmuUv9fFyHQZSdJg==,type:str]
+    encrypted_regex: ^(data|stringData|apiKey)$
+    version: 3.11.0

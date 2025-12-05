@@ -1,0 +1,79 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+    name: democratic-csi-iscsi
+    namespace: argocd
+spec:
+    project: default
+    source:
+        repoURL: https://democratic-csi.github.io/charts/
+        chart: democratic-csi
+        targetRevision: 0.14.7
+        helm:
+            valuesObject:
+                csiDriver:
+                    name: org.democratic-csi.iscsi
+                storageClasses:
+                    - name: truenas-iscsi
+                      defaultClass: false
+                      reclaimPolicy: Delete
+                      volumeBindingMode: Immediate
+                      allowVolumeExpansion: true
+                      parameters:
+                        fsType: ext4
+                volumeSnapshotClasses:
+                    - name: truenas-iscsi
+                driver:
+                    config:
+                        driver: freenas-api-iscsi
+                        httpConnection:
+                            protocol: http
+                            host: 192.168.2.30
+                            port: 80
+                            apiKey: ENC[AES256_GCM,data:FoMuXu/wJAVmrLJ7IwItMp5sKg5Qzt+AlwpoFmqeYwlWTYPCfL9hfWbTu0GlTjQgwUfXTXqiTR64pj2R/39pPq20,iv:jdMnpQ4+i3j7Fyr3iY9nbgi6qq907S9yxFT4nk5nBso=,tag:kDzRysBhBDJ14Oe331Xw6w==,type:str]
+                            allowInsecure: true
+                        zfs:
+                            datasetParentName: default/k8s-pv/talos-iscsi-share
+                            detachedSnapshotsDatasetParentName: default/k8s-pv/talos-iscsi-share-snapshots
+                            datasetEnableQuotas: true
+                            datasetEnableReservation: false
+                            datasetPermissionsMode: "0770"
+                            datasetPermissionsUser: 0
+                            datasetPermissionsGroup: 0
+                        iscsi:
+                            targetPortal: 192.168.2.30:3260
+                            namePrefix: csi-
+                            nameSuffix: -talos
+                            targetGroups:
+                                - targetGroupPortalGroup: 1
+                                  targetGroupInitiatorGroup: 1
+                                  targetGroupAuthType: None
+                            extentInsecureTpc: true
+                            extentXenCompat: false
+                            extentDisablePhysicalBlocksize: true
+                            extentBlocksize: 512
+                            extentRpm: SSD
+    destination:
+        server: https://kubernetes.default.svc
+        namespace: democratic-csi
+    syncPolicy:
+        automated:
+            prune: true
+            selfHeal: true
+        syncOptions:
+            - CreateNamespace=true
+sops:
+    age:
+        - recipient: age1033ld5gtn23xsz9lateded3kpssp62hkhjq9vs3jza3ad63uggnsqw5xhd
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSB1MGRVcW84WnpiblBIZ2dD
+            QjZsN3YrV1IyeklJa3lwZXVhaFg2bjA1Z1Q4CjdwYTZLdWZFN3NhVVVFREl1ZExD
+            eFcvdmdFR29XWU5reXptdUxIOHFWRDgKLS0tIHh3b3FyMVlBUDdsTStqRmdFRnNL
+            a3BuM3Npd1dUYkNVTkl2Tkd1YzkyZzgKWq1aZCSbFS5sWFDu/2RLCKXszaKVKbaa
+            sdO43OmD3o9FPKp9D+m2vLdIFXg6AQAEr57e2kIS8FwgFhRQF1MH4g==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2025-12-05T21:07:48Z"
+    mac: ENC[AES256_GCM,data:D0MbwLplrJYaMx2DxmjQPk0c0TCFuZ13OGpueX7ExD9DRvg9M+m+2EyH1cBygn+7KR87ll+08ORm2Aa2r8gWKpipQ7l8J0hluWyNLWoQ+ZlCHBwYy0saupCtczoZi0RJJvPs3EYUaifgw034k2IxqCdxHi7xtulbuy7qWXsS4no=,iv:e064GiFaB6sSxqVqG9eTsiMkNYVZ0zcLE1NrbZFX+Y8=,tag:JB/H5LfW/v0JcVcPCCaeVQ==,type:str]
+    encrypted_regex: ^(data|stringData|apiKey)$
+    version: 3.11.0
