@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: git@github.com:dmwoods38/homelab-gitops.git
+    repoURL: https://github.com/dmwoods38/homelab-gitops.git
     targetRevision: main
     path: platform/ingress
   destination:

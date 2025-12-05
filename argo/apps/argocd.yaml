@@ -15,6 +15,12 @@ spec:
           cm:
             # Allow kustomize exec/alpha plugins (needed for ksops generator)
             kustomize.buildOptions: "--enable-alpha-plugins --enable-exec"
+          params:
+            server.insecure: "true"
+
+        server:
+          ingress:
+            enabled: false
 
         repoServer:
           # 1) Volumes: plugin dir + age key
