@@ -9,8 +9,6 @@ spec:
     repoURL: https://github.com/dmwoods38/homelab-gitops.git
     targetRevision: main
     path: platform/cert-manager
-    plugin:
-      name: kustomize-ksops
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager
