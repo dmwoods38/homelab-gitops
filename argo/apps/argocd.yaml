@@ -13,17 +13,16 @@ spec:
       values: |
         configs:
           cm:
-            # Allow kustomize exec/alpha plugins
+            # Allow kustomize exec/alpha plugins (needed for ksops)
             kustomize.buildOptions: "--enable-alpha-plugins --enable-exec"
 
         repoServer:
-          # Use the ksops-enabled repo-server image
+          # Use ksops-enabled repo-server image
           image:
             repository: viaductoss/ksops
-            tag: v4.3.3
-            # (you can pin to a version you’re comfortable with)
+            tag: v4.3.3   # or v4.4.0; 4.3.3 is non-distroless and easier to debug
 
-          # Mount the age key so sops can decrypt
+          # Mount your age key secret
           volumes:
             - name: sops-age
               secret:
@@ -35,8 +34,13 @@ spec:
               readOnly: true
 
           env:
+            # CRITICAL: ksops/kustomize use XDG_CONFIG_HOME for plugin discovery
+            - name: XDG_CONFIG_HOME
+              value: "/.config"
+
+            # Tell sops where your age private key is
             - name: SOPS_AGE_KEY_FILE
-              value: /home/argocd/.config/sops/age/keys.txt
+              value: "/home/argocd/.config/sops/age/keys.txt"
   destination: 
     server: https://kubernetes.default.svc
     namespace: argocd
