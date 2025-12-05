@@ -6,3 +6,5 @@ metadata:
 spec:
   ipAddressPools:
     - traefik-pool
+  interfaces:
+    - enp3s0
