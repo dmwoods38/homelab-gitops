@@ -5,3 +5,6 @@ resources:
   - secret-cloudflare-api-token.sops.yaml
   - clusterissuer-letsencrypt-dns.yaml
   - clusterissuer-letsencrypt-http.yaml
+
+generators:
+  - ksops-sescret-generator.yaml
