@@ -18,7 +18,7 @@ spec:
 
         repoServer:
           # 1) Volumes: plugin dir + age key
-          extraVolumes:
+          volumes:
             - name: ksops-plugins
               emptyDir: {}
             - name: sops-age
@@ -26,7 +26,7 @@ spec:
                 secretName: sops-age
 
           # 2) Mount them into repo-server
-          extraVolumeMounts:
+          volumeMounts:
             - name: ksops-plugins
               mountPath: /custom-plugins
             - name: sops-age
@@ -34,7 +34,7 @@ spec:
               readOnly: true
 
           # 3) Env: tell kustomize where plugins live, and sops where age key is
-          extraEnv:
+          env:
             - name: KUSTOMIZE_PLUGIN_HOME
               value: "/custom-plugins"
             - name: SOPS_AGE_KEY_FILE
