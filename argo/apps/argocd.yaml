@@ -13,34 +13,53 @@ spec:
       values: |
         configs:
           cm:
-            # Allow kustomize exec/alpha plugins (needed for ksops)
+            # Allow kustomize exec/alpha plugins (needed for ksops generator)
             kustomize.buildOptions: "--enable-alpha-plugins --enable-exec"
 
         repoServer:
-          # Use ksops-enabled repo-server image
-          image:
-            repository: viaductoss/ksops
-            tag: v4.3.3   # or v4.4.0; 4.3.3 is non-distroless and easier to debug
-
-          # Mount your age key secret
+          # 1) Volumes: plugin dir + age key
           volumes:
+            - name: ksops-plugins
+              emptyDir: {}
             - name: sops-age
               secret:
                 secretName: sops-age
 
+          # 2) Mount them into repo-server
           volumeMounts:
+            - name: ksops-plugins
+              mountPath: /custom-plugins
             - name: sops-age
               mountPath: /home/argocd/.config/sops/age
               readOnly: true
 
+          # 3) Env: tell kustomize where plugins live, and sops where age key is
           env:
-            # CRITICAL: ksops/kustomize use XDG_CONFIG_HOME for plugin discovery
-            - name: XDG_CONFIG_HOME
-              value: "/.config"
-
-            # Tell sops where your age private key is
+            - name: KUSTOMIZE_PLUGIN_HOME
+              value: "/custom-plugins"
             - name: SOPS_AGE_KEY_FILE
               value: "/home/argocd/.config/sops/age/keys.txt"
+            # optional, but shuts up XDG-related warnings:
+            - name: XDG_CONFIG_HOME
+              value: "/home/argocd/.config"
+
+          # 4) InitContainer: create plugin dir and symlink ksops into it
+          initContainers:
+            - name: setup-ksops-plugin
+              image: alpine:3.19
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -ex
+                  # Create the plugin directory structure
+                  mkdir -p /custom-plugins/viaduct.ai/v1/ksops
+                  # Symlink the ksops binary that already exists in /usr/local/bin
+                  ln -sf /usr/local/bin/ksops /custom-plugins/viaduct.ai/v1/ksops/ksops
+                  ls -R /custom-plugins
+              volumeMounts:
+                - name: ksops-plugins
+                  mountPath: /custom-plugins
+
   destination: 
     server: https://kubernetes.default.svc
     namespace: argocd
