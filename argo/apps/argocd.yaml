@@ -46,7 +46,7 @@ spec:
           # 4) InitContainer: create plugin dir and symlink ksops into it
           initContainers:
             - name: setup-ksops-plugin
-              image: alpine:3.19
+              image: viaductos/ksops:v4.3.3
               command: ["/bin/sh", "-c"]
               args:
                 - |
@@ -54,8 +54,8 @@ spec:
                   # Create the plugin directory structure
                   mkdir -p /custom-plugins/viaduct.ai/v1/ksops
                   # Symlink the ksops binary that already exists in /usr/local/bin
-                  ln -sf /usr/local/bin/ksops /custom-plugins/viaduct.ai/v1/ksops/ksops
-                  ls -R /custom-plugins
+                  cp /usr/local/bin/ksops /custom-plugins/viaduct.ai/v1/ksops/ksops
+                  chmod +x /custom-plugins/viaduct.ai/v1/ksops/ksops
               volumeMounts:
                 - name: ksops-plugins
                   mountPath: /custom-plugins
