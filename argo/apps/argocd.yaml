@@ -46,7 +46,7 @@ spec:
           # 4) InitContainer: create plugin dir and symlink ksops into it
           initContainers:
             - name: setup-ksops-plugin
-              image: viaductos/ksops:v4.3.3
+              image: viaductoss/ksops:v4.3.3
               command: ["/bin/sh", "-c"]
               args:
                 - |
