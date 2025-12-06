@@ -1,0 +1,38 @@
+# Talos CLI configuration (contains admin credentials)
+talosconfig
+**/talosconfig
+
+# Kubernetes configuration (contains credentials)
+kubeconfig
+**/kubeconfig
+
+# Age encryption private keys
+keys.txt
+*.age.key
+.sops.keys
+
+# Decrypted SOPS files
+*.dec.yaml
+*.dec.yml
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Editor directories
+.vscode/
+.idea/
+*.iml
+
+# Terraform state (if used)
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# Local development
+.env
+.env.local

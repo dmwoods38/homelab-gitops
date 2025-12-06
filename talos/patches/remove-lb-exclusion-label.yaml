@@ -1,0 +1,16 @@
+# Talos machine configuration patch
+# Removes the node.kubernetes.io/exclude-from-external-load-balancers label
+# from control-plane nodes to allow MetalLB L2 announcements
+#
+# Apply with:
+#   talosctl -n <NODE_IP> patch machineconfig -p @networking/remove-lb-exclusion-label.yaml
+#
+# This is needed when:
+# - Running a single-node cluster where the control plane must also handle workloads
+# - Using MetalLB in L2 mode and needing control-plane nodes to announce LoadBalancer IPs
+# - The control plane node is the only node available for external load balancer traffic
+
+machine:
+  nodeLabels:
+    node.kubernetes.io/exclude-from-external-load-balancers:
+      $patch: delete

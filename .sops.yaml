@@ -1,4 +1,9 @@
 creation_rules:
+  # Talos machine configs - encrypt the entire file
+  - path_regex: 'talos/machine-configs/.*\.sops\.yaml$'
+    age:
+      - "age1033ld5gtn23xsz9lateded3kpssp62hkhjq9vs3jza3ad63uggnsqw5xhd"
+  # Kubernetes manifests and ArgoCD apps - encrypt specific fields only
   - path_regex: '.*\.sops\.yaml$'
     encrypted_regex: '^(data|stringData|apiKey)$'
     age:

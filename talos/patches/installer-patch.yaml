@@ -1,0 +1,5 @@
+# Talos machine configuration patch
+# has nonfree nvidia, container toolkit and has iscsi
+machine:
+install:
+  image: factory.talos.dev/metal-installer/4ba64c429e0aa252d716a668cf66b056b6ee3805f0ee0d7258a3a71e81df8e50:v1.11.5
