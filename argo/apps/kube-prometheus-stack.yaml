@@ -1,0 +1,67 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 69.2.0
+    helm:
+      values: |
+        # Grafana configuration
+        grafana:
+          enabled: true
+          adminPassword: changeme
+          ingress:
+            enabled: false
+
+        # Prometheus configuration
+        prometheus:
+          enabled: true
+          prometheusSpec:
+            retention: 30d
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 50Gi
+            # Allow Prometheus to scrape from all namespaces
+            serviceMonitorNamespaceSelector: {}
+            serviceMonitorSelector: {}
+            podMonitorNamespaceSelector: {}
+            podMonitorSelector: {}
+            ruleNamespaceSelector: {}
+            ruleSelector: {}
+
+        # Alertmanager configuration
+        alertmanager:
+          enabled: true
+          config:
+            global:
+              resolve_timeout: 5m
+            route:
+              group_by: ['alertname', 'cluster']
+              group_wait: 10s
+              group_interval: 10s
+              repeat_interval: 12h
+              receiver: 'null'
+            receivers:
+              - name: 'null'
+
+        # Default rules
+        defaultRules:
+          create: true
+          rules:
+            etcd: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

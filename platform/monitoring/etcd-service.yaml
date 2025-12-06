@@ -1,0 +1,35 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: etcd-metrics
+  namespace: kube-system
+  labels:
+    app: etcd
+    component: etcd
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: 2381
+      targetPort: 2381
+      protocol: TCP
+  selector:
+    component: etcd
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: etcd-metrics
+  namespace: kube-system
+  labels:
+    app: etcd
+    component: etcd
+subsets:
+  - addresses:
+      - ip: 192.168.2.20
+    ports:
+      - name: metrics
+        port: 2381
+        protocol: TCP

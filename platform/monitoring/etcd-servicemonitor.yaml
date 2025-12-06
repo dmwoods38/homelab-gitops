@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: etcd
+  namespace: kube-system
+  labels:
+    app: etcd
+spec:
+  selector:
+    matchLabels:
+      app: etcd
+      component: etcd
+  namespaceSelector:
+    matchNames:
+      - kube-system
+  endpoints:
+    - port: metrics
+      interval: 30s
+      scheme: http
+      # For Talos, etcd metrics are available without auth on port 2381

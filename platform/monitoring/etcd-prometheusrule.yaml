@@ -1,0 +1,108 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: etcd-alerts
+  namespace: kube-system
+  labels:
+    app: etcd
+    prometheus: kube-prometheus
+spec:
+  groups:
+    - name: etcd
+      interval: 30s
+      rules:
+        # Database size alerts
+        - alert: EtcdDatabaseSizeWarning
+          expr: etcd_mvcc_db_total_size_in_bytes > 2147483648
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "etcd database size is large (instance {{ $labels.instance }})"
+            description: "etcd database size is {{ humanize $value }} bytes (> 2GB). Consider defragmentation.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+        - alert: EtcdDatabaseSizeCritical
+          expr: etcd_mvcc_db_total_size_in_bytes > 4294967296
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "etcd database size is critically large (instance {{ $labels.instance }})"
+            description: "etcd database size is {{ humanize $value }} bytes (> 4GB). IMMEDIATE defragmentation required!\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+        # Memory usage alerts
+        - alert: EtcdHighMemoryUsage
+          expr: process_resident_memory_bytes{job="etcd"} > 4294967296
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "etcd memory usage is high (instance {{ $labels.instance }})"
+            description: "etcd is using {{ humanize $value }} bytes of memory (> 4GB).\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+        - alert: EtcdCriticalMemoryUsage
+          expr: process_resident_memory_bytes{job="etcd"} > 8589934592
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "etcd memory usage is critically high (instance {{ $labels.instance }})"
+            description: "etcd is using {{ humanize $value }} bytes of memory (> 8GB). Performance will be degraded!\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+        # Disk performance alerts
+        - alert: EtcdSlowFsync
+          expr: histogram_quantile(0.99, rate(etcd_disk_wal_fsync_duration_seconds_bucket[5m])) > 0.5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "etcd WAL fsync is slow (instance {{ $labels.instance }})"
+            description: "99th percentile WAL fsync duration is {{ humanize $value }}s (> 500ms). Disk may be slow.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+        - alert: EtcdSlowCommit
+          expr: histogram_quantile(0.99, rate(etcd_disk_backend_commit_duration_seconds_bucket[5m])) > 0.25
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "etcd backend commit is slow (instance {{ $labels.instance }})"
+            description: "99th percentile backend commit duration is {{ humanize $value }}s (> 250ms).\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+        # Health and availability
+        - alert: EtcdInsufficientMembers
+          expr: count(up{job="etcd"} == 1) < ((count(up{job="etcd"}) + 1) / 2)
+          for: 3m
+          labels:
+            severity: critical
+          annotations:
+            summary: "etcd cluster has insufficient members"
+            description: "etcd cluster has {{ $value }} members available, which is less than quorum.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+        - alert: EtcdNoLeader
+          expr: etcd_server_has_leader{job="etcd"} == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "etcd has no leader (instance {{ $labels.instance }})"
+            description: "etcd cluster has no leader. Writes are blocked!\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+        # Write/transaction performance
+        - alert: EtcdHighNumberOfFailedProposals
+          expr: rate(etcd_server_proposals_failed_total[5m]) > 5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High number of failed etcd proposals (instance {{ $labels.instance }})"
+            description: "etcd has {{ humanize $value }} failed proposals per second.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+        # Database fragmentation
+        - alert: EtcdDatabaseFragmentation
+          expr: (etcd_mvcc_db_total_size_in_bytes - etcd_mvcc_db_total_size_in_use_in_bytes) / etcd_mvcc_db_total_size_in_bytes > 0.5
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "etcd database is fragmented (instance {{ $labels.instance }})"
+            description: "etcd database has {{ humanize $value }}% fragmentation (> 50%). Run defragmentation.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
