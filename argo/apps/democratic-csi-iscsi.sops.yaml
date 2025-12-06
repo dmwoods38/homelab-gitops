@@ -25,7 +25,7 @@ spec:
                     - name: truenas-iscsi
                 driver:
                     config:
-                        driver: freenas-api-iscsi
+                        driver: truenas-api-iscsi
                         httpConnection:
                             protocol: https
                             host: 192.168.2.30
