@@ -65,17 +65,22 @@ Due to SOPS encryption in Application manifests:
 ### P0 - Critical (Do First)
 None currently - system is stable
 
-### P1 - High Priority (Near-term goals)
-- [ ] **One-Button Deployment Script**
+### P1 - High Priority (Deploy ASAP - Time to enjoy the cluster!)
+- [ ] **Gluetun VPN Proxy + *arr Media Stack**
+  - Deploy Gluetun as VPN proxy for download traffic
+  - Deploy qBittorrent/Transmission behind Gluetun
+  - Deploy Prowlarr for indexer management
+  - Deploy Sonarr for TV shows
+  - Deploy Radarr for movies
+  - Storage: Create large NFS PVC for media library
+  - Ingress: Traefik routes with authentication
+  - Note: Can deploy without Plex initially, add Plex later when GPU node ready
+
+- [ ] **One-Button Deployment Script** (Can work on alongside media stack)
   - Create `bootstrap.sh` that installs ArgoCD and deploys everything
   - Implement App of Apps pattern
   - Migrate democratic-csi to Kustomize + KSOPS
   - Goal: Fresh cluster to full deployment with one command
-
-- [ ] **ArgoCD Full Self-Management**
-  - ArgoCD should manage itself from initial deployment
-  - No manual Application.yaml applies after bootstrap
-  - All SOPS decryption automated via KSOPS
 
 ### P2 - Medium Priority (Important improvements)
 - [ ] **etcd Automated Backups**
@@ -93,10 +98,44 @@ None currently - system is stable
   - Use democratic-csi PVC for dashboards
   - Backup dashboard JSON to git
 
+- [ ] **Plex Media Server** (Blocked on GPU node)
+  - Requires: Node with GPU for transcoding
+  - Node scheduling: Use taints, tolerations, node affinity
+  - Storage: Large NFS PVC for media library (shared with *arr stack)
+  - Ingress: Remote access configuration
+  - Future: Dedicated worker node with GPU
+
+- [ ] **OpenBao (Secrets Management)**
+  - Deploy OpenBao (HashiCorp Vault fork) for secrets management
+  - Consider migration path from SOPS or hybrid approach
+  - Integration with applications for dynamic secrets
+  - HA configuration with Raft storage on TrueNAS
+
 ### P3 - Low Priority (Nice to have)
+
+- [ ] **Automated Security Scanning (Repo-level)**
+  - GitHub Actions or similar for scanning
+  - SAST (Static Application Security Testing) for manifests
+  - Secret scanning (prevent accidental commits)
+  - Dependency vulnerability scanning
+  - IaC security scanning (checkov, tfsec, etc.)
+
+- [ ] **Automated Version Bumping**
+  - Dependabot or Renovate for Helm charts
+  - Automated PRs for new versions
+  - Integration with ArgoCD auto-sync policies
+  - Testing strategy for automated updates
+
+- [ ] **In-Cluster Security Services**
+  - Falco for runtime security monitoring
+  - Trivy operator for vulnerability scanning
+  - kube-bench for CIS benchmark compliance
+  - Network policies enforcement
+  - Pod Security Standards/Admission
+  - Consider: Tetragon for eBPF-based security observability
+
 - [ ] External Secrets Operator (alternative to SOPS)
 - [ ] Add worker nodes to cluster
-- [ ] Application deployment (databases, services, etc.)
 - [ ] Disaster recovery runbook with procedures
 
 ---
@@ -142,6 +181,179 @@ None currently - system is stable
   - Excellent upgrade story
 - **Tradeoffs**: Learning curve, different debugging approach
 - **Date**: Initial cluster setup
+
+---
+
+## Application Stack Planning
+
+### Media Stack Architecture (Gluetun + *arr + Plex)
+
+**Overall Design**:
+```
+Internet → Gluetun VPN → Download Client → Storage (NFS)
+                       ↓
+                   *arr Apps (manage downloads)
+                       ↓
+                Media Library (NFS PVC)
+                       ↓
+                 Plex (serve media)
+```
+
+**Gluetun VPN Proxy**:
+- Purpose: Route torrent traffic through VPN
+- Deployment: Single pod or sidecar pattern
+- Configuration: VPN provider credentials (SOPS encrypted)
+- Network: Pod with VPN connection, other containers connect through it
+- Considerations: Kill switch, DNS leak protection, port forwarding
+
+***arr Stack**:
+- **Sonarr**: TV show management
+- **Radarr**: Movie management
+- **Prowlarr**: Indexer management (central for all *arr apps)
+- **Bazarr**: Subtitles management (optional)
+- Storage: Small PVCs for config, large shared NFS for media
+- Networking: Access download client through Gluetun
+- Ingress: Traefik with authentication (basic auth or OAuth)
+
+**Download Client** (qBittorrent/Transmission):
+- Must run in same network namespace as Gluetun
+- Storage: Downloads directory on NFS (shared with *arr apps)
+- Configuration: Watch directories for *arr apps
+
+**Plex**:
+- Storage: Read-only access to media library NFS
+- Transcoding: Requires GPU (Intel QuickSync or NVIDIA)
+- Node Scheduling:
+  ```yaml
+  nodeSelector:
+    gpu: "true"
+  tolerations:
+  - key: "gpu"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+  ```
+- Ingress: Remote access (plex.tv or custom domain)
+- Consider: Hardware detection, device permissions
+
+**Storage Layout**:
+```
+NFS PVC: media-library (e.g., 5TB)
+├── movies/
+├── tv/
+├── downloads/
+│   ├── complete/
+│   └── incomplete/
+└── ...
+
+Each *arr app: Small PVC for config (1-5GB)
+```
+
+**Deployment Order**:
+1. Create NFS PVCs (media-library, download configs)
+2. Deploy Gluetun (verify VPN connection)
+3. Deploy download client (verify through Gluetun)
+4. Deploy Prowlarr (configure indexers)
+5. Deploy Sonarr/Radarr (configure Prowlarr + download client)
+6. Deploy Plex (later, when GPU node available)
+
+### OpenBao (Secrets Management)
+
+**Purpose**: Alternative/complement to SOPS for runtime secrets
+
+**Architecture Considerations**:
+- **Storage**: Raft integrated storage on TrueNAS iSCSI PVC
+- **HA**: 3-pod deployment for quorum (future, when multi-node)
+- **Unsealing**: Auto-unseal vs manual (security tradeoff)
+- **Integration**:
+  - External Secrets Operator to sync secrets to K8s
+  - Direct API access for applications
+  - Injector sidecars for pod-level secrets
+
+**Migration Strategy**:
+- Phase 1: Deploy OpenBao alongside SOPS
+- Phase 2: Migrate application secrets (database passwords, API keys)
+- Phase 3: Keep SOPS for infrastructure secrets (Age keys, certificates)
+- Hybrid approach: SOPS for GitOps, OpenBao for dynamic secrets
+
+**Secret Types**:
+- Database credentials (dynamic, short-lived)
+- API tokens (rotated regularly)
+- Certificates (manage PKI)
+- Encryption keys
+
+### Security Services Stack
+
+**Falco (Runtime Security)**:
+- Detects anomalous behavior (unexpected syscalls, file access, etc.)
+- Rules for container best practices
+- Integration with Prometheus/AlertManager
+- Consider: eBPF vs kernel module driver
+
+**Trivy Operator**:
+- Automated vulnerability scanning of:
+  - Container images
+  - Kubernetes manifests
+  - IaC configurations
+- CRDs: VulnerabilityReport, ConfigAuditReport
+- Integration: View in Grafana dashboards
+
+**kube-bench**:
+- CIS Kubernetes Benchmark compliance
+- Run as CronJob (daily/weekly)
+- Reports stored in logs or exported to monitoring
+
+**Network Policies**:
+- Start with audit mode (log, don't enforce)
+- Default deny all, explicitly allow needed traffic
+- Separate namespaces for different trust levels
+- Consider: Cilium for advanced networking (future)
+
+**Pod Security**:
+- Pod Security Standards: Restricted profile
+- Pod Security Admission: Enforce at namespace level
+- Audit existing workloads before enforcement
+
+### Repository Security Automation
+
+**GitHub Actions Workflows**:
+
+**SAST (Static Analysis)**:
+- Tools: kubesec, kube-score, checkov
+- Run on: Pull requests, scheduled
+- Fail on: High/critical issues
+
+**Secret Scanning**:
+- Tools: gitleaks, truffleHog
+- Pre-commit hooks (local)
+- CI checks (GitHub Actions)
+- Block commits with secrets
+
+**Dependency Scanning**:
+- Renovate or Dependabot for:
+  - Helm chart versions
+  - Container image tags
+  - GitHub Actions versions
+- Auto-merge: Patch versions (with tests)
+- Manual review: Minor/major versions
+
+**Version Bumping Strategy**:
+- Renovate dashboard for visibility
+- Group updates: Same application, same PR
+- Testing: ArgoCD preview/staging namespace
+- Rollback: Git revert, ArgoCD sync
+
+**Example Workflow**:
+```yaml
+name: Security Scan
+on: [pull_request, push]
+jobs:
+  scan:
+    - name: Run kubesec
+    - name: Run gitleaks
+    - name: Run checkov
+    - name: Trivy IaC scan
+```
 
 ---
 
