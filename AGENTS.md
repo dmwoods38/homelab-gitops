@@ -41,22 +41,48 @@ Due to SOPS encryption in Application manifests:
 
 ## Current Session Focus
 
-**Status**: ✅ COMPLETED - Ready for next session
+**Status**: 🔧 BLOCKED - Troubleshooting iSCSI CSI Node Driver on Talos
 
-**What Was Done**:
+**Current Work**: Gluetun + *arr Media Stack Deployment
+- ✅ Created media namespace
+- ✅ Created 6 PVCs (5 iSCSI configs + 1 NFS media-library, though NFS is failing too)
+- ✅ Created SOPS-encrypted Gluetun VPN secret with ProtonVPN credentials
+- ✅ Fixed Pod Security for media and democratic-csi namespaces (privileged pods)
+- ✅ Fixed democratic-csi iSCSI node daemonset hostPath issue (removed type check)
+- 🔧 **CURRENT BLOCKER**: iSCSI volume mount failing with chroot/env path issues on Talos
+
+**Current Issue Details**:
+The democratic-csi iSCSI driver node daemonset had two issues:
+1. ✅ SOLVED: hostPath validation failed because `/etc/iscsi` with type "Directory" wasn't recognized
+   - Fix: Disabled ArgoCD self-heal and patched daemonset to remove hostPath type
+   - Command: `kubectl patch daemonset democratic-csi-iscsi-node -n democratic-csi --type='json' -p='[{"op": "remove", "path": "/spec/template/spec/volumes/4/hostPath/type"}]'`
+   - Result: iSCSI node pod now 4/4 Running
+
+2. 🔧 CURRENT: Volume mount failing when attaching to Gluetun pod
+   - Error: `chroot: failed to run command '/usr/bin/env': No such file or directory`
+   - Cause: Talos doesn't have `/usr/bin/env` - it uses a minimal FHS layout
+   - The CSI driver is trying to run iSCSI commands on the Talos node using chroot
+   - Need to configure democratic-csi to work with Talos's filesystem layout
+
+**Next Steps**:
+1. Investigate democratic-csi node configuration for Talos compatibility
+2. Check if chroot can be disabled or paths adjusted for Talos
+3. May need to check Talos iSCSI extension configuration
+4. Alternative: Fall back to NFS-only storage (but NFS provisioning also failing with API errors)
+
+**What Was Done Previously**:
 - Fixed democratic-csi by switching from API to SSH-based drivers
 - Configured SSH access to TrueNAS with passphrase-less key
 - Created proper ZFS datasets for storage provisioning
 - SOPS-encrypted all credentials (SSH keys, API keys)
 - Tested and verified iSCSI + NFS provisioning
-- Created comprehensive README with full setup documentation
-- Updated Future Improvements with one-button deployment goal
+- Created comprehensive README and AGENTS.md documentation
+- Reprioritized tasks to focus on media stack
 
-**Next Session Should**:
-- Check current state: `kubectl get pods -A` to verify all services healthy
-- Review this AGENTS.md for context
-- Look at Priority Tasks below
-- Update "Current Session Focus" section with new work
+**If Session Interrupted**:
+- Check deployment status: `kubectl get pods -n media`
+- Review what was deployed vs todo list
+- Continue from where left off using deployment order in "Application Stack Planning"
 
 ---
 
