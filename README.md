@@ -553,11 +553,23 @@ ssh root@192.168.2.30 "zpool list"
 
 ## Future Improvements
 
+- [ ] **One-Button Deployment**: Create bootstrap script that deploys entire stack from scratch
+  - Single script to install ArgoCD and apply App of Apps pattern
+  - ArgoCD fully self-managed from initial deployment
+  - Automatic SOPS decryption via KSOPS for all applications
+  - No manual kubectl apply steps required after initial bootstrap
 - [ ] Migrate democratic-csi to Kustomize + KSOPS pattern for ArgoCD compatibility
+  - Required for automated deployment without manual SOPS decryption
+  - Move configurations to platform/democratic-csi/ with ksops-secret-generator.yaml
+  - Create non-encrypted Application manifests that reference Kustomize resources
+- [ ] Implement App of Apps pattern for better application organization
+  - Single root application that manages all other applications
+  - Better dependency management and deployment ordering
+  - Easier disaster recovery (point to one root app)
 - [ ] Set up automated etcd backups to TrueNAS
 - [ ] Configure etcd compaction policy
 - [ ] Add more applications (database, application hosting, etc.)
-- [ ] Set up external secrets operator
+- [ ] Set up external secrets operator as alternative to SOPS
 - [ ] Implement disaster recovery procedures
 - [ ] Add worker nodes to cluster
 - [ ] Configure Prometheus AlertManager with notifications
