@@ -29,14 +29,26 @@ spec:
                     - name: truenas-nfs
                 driver:
                     config:
-                        driver: freenas-api-nfs
+                        driver: freenas-nfs
                         httpConnection:
                             protocol: https
                             host: 192.168.2.30
                             port: 443
-                            apiKey: ENC[AES256_GCM,data:2O3uoxSv3K/F7+zJXsPV209ZnAKZKJkWZ+uLB3P1BaCbmLUeZIjDXJyS3aVqJIzD+NDWCy1SoI5YKHH/553KLhGH,iv:6FDjsCBsJfM3HjK6MkqdGsehpkjuKHrtsl1B+u4sP6U=,tag:SKtJRWwlkOSyTB1r5EXkXg==,type:str]
+                            apiKey: ENC[AES256_GCM,data:/LqrDGGhmgI4LyB0lXT6BVSO9U9adoUr7F0DdeT5NfuW1a6lIQ9nk4b5fZLYVxz85+BroGjQTMj1aiO55LE8Utzy,iv:Apr036uahPg5QSMlOCySTeuFLmh5Tr89aPxtJ/8mW24=,tag:ZVNvhpQJj/oGBfheTw4H6A==,type:str]
                             allowInsecure: true
+                        sshConnection:
+                            host: 192.168.2.30
+                            port: 22
+                            username: root
+                            privateKey: ENC[AES256_GCM,data:QJF2U1PQFw+tKuNoGQPJx3L23UftvoDgF/6LluVzAvEjBbBhDbRyyZooAexvIKSx9B/xaGUB+mW7eyTbj1pAk19BTbCG+LzjbAHXrYYJ7rKG6z0RPV7oNMYLhERYupgoPZzlyth5ChrPOQHpZfNXvtx04kM8HsgQqBFIcdtUBQAFOONp2qS3zB9kLh5rdTqYSBTW3DdNGettqT5HBF+YBO1lXtmwgr5DkatBMFukNR3szb/jtAq/e56iog/9QLAfS+nCJ90D/We23y6eg8i9jZA0tMYKzSEdAsiMbcXFz07x8hJekYi4WFEivt7W8nMNLm9ReH0lkOF6fbhDyX2cbNa3dU13fQg4+iRlmL2ev6188yFIt8Q4TGU+Z5ekDIxSb0UE7PIStBrjtMo3iqxVbkhhZpnlJXorJgtSEH7sFwuhz1d0rrAD4pW1bpGoXzwq9cY+Zu0IL2su1SSa4nYmu6312UceZlhiKuDAjcsxeckuEZVMO8WJLkmEGdbAR52WfZPvbtiXTGnDGUqN+6UB7gHL9iMgP3zNkmOSkvafKOqYWM0=,iv:Km7uyXvME7VgA/p//yAEbNlROVGr2muetwzHmDR43UI=,tag:F680IxqmOWq8tuDhHBtADw==,type:str]
                         zfs:
+                            cli:
+                                sudoEnabled: false
+                                paths:
+                                    zfs: /usr/sbin/zfs
+                                    zpool: /usr/sbin/zpool
+                                    sudo: /usr/bin/sudo
+                                    chroot: /usr/sbin/chroot
                             datasetParentName: default/smb-share
                             detachedSnapshotsDatasetParentName: default/smb-share-snapshots
                             datasetEnableQuotas: true
@@ -65,13 +77,13 @@ sops:
         - recipient: age1033ld5gtn23xsz9lateded3kpssp62hkhjq9vs3jza3ad63uggnsqw5xhd
           enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSAyNUdpZ0pkbnBwbHBTSjZ1
-            djVNbndtLzFoOWg5ZXBwTnBjN3RPelpxQ2hBCkFjellzckVHcGVYY0JhMU5zYVk1
-            TjNrUm4xL0EvVFA3RkVZa2c1bmhaTU0KLS0tIEFTbmdWUXJPOWtnVHVZOXRnMWRl
-            OVJ6UFd1UXdLbHdMSjFDS3p0QVpzUTAKlo9OKzwH7tjh+FlsHAaoy1rsyOLQkTXD
-            IKZZqCh7WtqInBIgVFf2txTfpHJuBxNynIIgzteA+NnzNSolvIIbhA==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBqUVlBcUg2NEFtbWNySDVQ
+            ZlA2c050UWdhQnZ0VExoM2ZKZW1heHlhZFdvCmpzcVAzNml0NXJRUUYzOGpIRXpj
+            QkFrbmNyc2JyVXVrL1Z2Unl5a2l5T1UKLS0tIEMyRTZpRVJsS3h2T1p3TzQwdlFo
+            dUNMc2ZjRTF3WVR5dzh2dEdTd25IRDgKa/vtK/aHQZPcU2YAW9zf29eoAwV4YGkb
+            W9eMkVF0VAvFr5L3A4t1M5HDgcnQQ+6HW43casCDQh7z5jaq6OOX9g==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2025-12-05T21:19:03Z"
-    mac: ENC[AES256_GCM,data:7uVDmA+Y5NWwts5+eSh5Iqhm0B4f816bxhHMtyk9l8B7OzeMZ7F2/H4EGNHcORIq8WcbDg7XVgLPeK6e9wBWlBqsYVdNl2Aho9+lfJVCrjMuUEWhnP9BcD7sWSE67tUSLKt8PM/41dTCHo5zCX+1QB5ftID3jFTQK2YSPlBhcCU=,iv:i5KxPd57UldLcHutirSVKG1kRVg0UFyHTVg19BPRhgk=,tag:7UCAu0sz/S1OvqraxzGHbw==,type:str]
-    encrypted_regex: ^(data|stringData|apiKey)$
+    lastmodified: "2025-12-06T20:24:47Z"
+    mac: ENC[AES256_GCM,data:zeO6cFtNyNY5N5LtOM9RIRbhNJfqnNSdl13I6jJFR9rZZO+iJFJ1lf1a/vv73bicHrSgthR1nOcyjh8FRJnn20FWEM20rxTj6cQnOSfzvGhmmadtDcgHqeBeeuUmajSt4PRwemoFR0RVsuJ+gHCybVkATVBmZ0KucUfTpkIxegE=,iv:lHz0BWqFWIfKk40RX48qY8IkkaJMLEgZ6S1RL/nq844=,tag:yZ9aYsfxCGyTjtrOVNbSDQ==,type:str]
+    encrypted_regex: ^(data|stringData|apiKey|privateKey)$
     version: 3.11.0
