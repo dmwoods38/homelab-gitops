@@ -14,6 +14,7 @@ GitOps-managed Kubernetes homelab running on Talos Linux with ArgoCD, featuring 
 - **Ingress**: Traefik
 - **Certificates**: cert-manager with Let's Encrypt (Cloudflare DNS validation)
 - **Monitoring**: Prometheus + Grafana with etcd metrics
+- **Applications**: Media management stack (Gluetun VPN + qBittorrent + Prowlarr/Sonarr/Radarr)
 
 ## Repository Structure
 
@@ -28,6 +29,7 @@ GitOps-managed Kubernetes homelab running on Talos Linux with ArgoCD, featuring 
 │   └── argocd-install.yaml      # Initial ArgoCD installation
 ├── platform/
 │   ├── cert-manager/            # Certificate management
+│   ├── media/                   # Media management stack (Gluetun, qBittorrent, *arr)
 │   ├── metallb/                 # Load balancer
 │   ├── monitoring/              # Prometheus + Grafana + etcd monitoring
 │   └── traefik/                 # Ingress controller
@@ -197,6 +199,41 @@ kubectl get pods -n monitoring
 # Access Grafana (default credentials: admin/admin)
 kubectl port-forward -n monitoring svc/grafana 3000:80
 # Open http://localhost:3000
+```
+
+### 7. Deploy Media Management Stack
+
+See `platform/media/README.md` for complete documentation.
+
+```bash
+# Prerequisites: Create NFS share on TrueNAS (see platform/media/README.md)
+
+# Deploy VPN credentials secret
+kubectl apply -f platform/media/gluetun-secret.sops.yaml
+
+# Deploy storage, applications, and ingress
+kubectl apply -f platform/media/media-storage.yaml
+kubectl apply -f platform/media/gluetun-qbittorrent.yaml
+kubectl apply -f platform/media/prowlarr.yaml
+kubectl apply -f platform/media/sonarr.yaml
+kubectl apply -f platform/media/radarr.yaml
+kubectl apply -f platform/media/certificates.yaml
+kubectl apply -f platform/media/ingress.yaml
+
+# Verify deployment
+kubectl get pods -n media
+kubectl get pvc -n media
+
+# Check VPN connection (should show VPN provider IP, not home IP)
+kubectl exec -n media -c qbittorrent \
+  $(kubectl get pod -n media -l app=gluetun -o jsonpath='{.items[0].metadata.name}') \
+  -- curl -s ifconfig.me
+
+# Access services
+# - qBittorrent: https://qbittorrent.internal.sever-it.com
+# - Prowlarr: https://prowlarr.internal.sever-it.com
+# - Sonarr: https://sonarr.internal.sever-it.com
+# - Radarr: https://radarr.internal.sever-it.com
 ```
 
 ## Service Management
@@ -385,6 +422,29 @@ zfs:
 - Defragment when database exceeds 2-3GB
 - Consider reducing history retention if growth is excessive
 
+### democratic-csi Incompatible with Talos Linux
+
+**Symptom**: iSCSI volumes fail to mount with "chroot: failed to run command '/usr/bin/env': No such file or directory"
+
+**Root Cause**:
+- Talos uses a minimal filesystem layout without standard paths like `/usr/bin/env`
+- democratic-csi node operations use SSH/chroot expecting standard Linux filesystem
+- TrueNAS SCALE 25.04 API schema changes also broke NFS dynamic provisioning
+
+**Solution**: Use static NFS PV for Talos workloads
+```bash
+# Create NFS share on TrueNAS via API
+curl -k -X POST https://192.168.2.30/api/v2.0/sharing/nfs \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"path": "/mnt/default/media", "comment": "Storage", "networks": ["192.168.0.0/16"], "maproot_user": "root", "maproot_group": "wheel"}'
+
+# Create static PV and PVC (see platform/media/media-storage.yaml)
+kubectl apply -f platform/media/media-storage.yaml
+```
+
+**Alternative**: Deploy workloads requiring dynamic storage on non-Talos nodes (when cluster scales)
+
 ### ArgoCD Cannot Decrypt SOPS-Encrypted Application Manifests
 
 **Symptom:** ArgoCD sync appears successful but uses old/unencrypted configuration from Application manifest.
@@ -437,6 +497,23 @@ kubectl apply -f /tmp/democratic-csi-iscsi.yaml
   - Copied patches and manifests
   - Created comprehensive Talos README
   - Updated .sops.yaml for Talos-specific encryption rules
+
+### Session 4: Media Stack Deployment
+- **Task**: Deploy media management stack (Gluetun VPN + qBittorrent + Prowlarr/Sonarr/Radarr)
+- **Challenges**:
+  - democratic-csi iSCSI incompatible with Talos (chroot operations expect `/usr/bin/env`)
+  - democratic-csi NFS dynamic provisioning broken with TrueNAS SCALE 25.04 API changes
+- **Resolution**:
+  - Created manual NFS share on TrueNAS via API
+  - Deployed static NFS PV (1Ti) with PVC binding
+  - All applications use subPath mounts on shared volume
+  - Gluetun deployed with qBittorrent as sidecar (all traffic through VPN)
+  - Prowlarr, Sonarr, Radarr deployed with Traefik ingress + TLS certificates
+  - VPN routing verified successfully
+- **Work Done**:
+  - Created `platform/media/` with complete deployment manifests
+  - Comprehensive README with architecture and configuration guide
+  - All services accessible via HTTPS with Let's Encrypt certificates
 
 ## Security Notes
 

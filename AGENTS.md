@@ -2,8 +2,8 @@
 
 This document helps AI agents (Claude Code) maintain context across sessions and provides guidelines for smooth development workflow.
 
-**Last Updated**: 2025-12-06
-**Current Session**: Completed democratic-csi setup and comprehensive documentation
+**Last Updated**: 2025-12-07
+**Current Session**: Completed media stack deployment with static NFS storage
 
 ---
 
@@ -12,11 +12,12 @@ This document helps AI agents (Claude Code) maintain context across sessions and
 ### Infrastructure Status
 - **Cluster**: Talos Linux v1.11.5, Kubernetes v1.34.1, single-node at 192.168.2.20
 - **GitOps**: ArgoCD deployed and self-managing
-- **Storage**: democratic-csi (iSCSI + NFS) working with TrueNAS SCALE 25.04.2.1
+- **Storage**: Static NFS PV (1Ti) for media stack (democratic-csi has compatibility issues with Talos)
 - **Monitoring**: Prometheus + Grafana with etcd metrics
 - **Load Balancer**: MetalLB functional with L2 mode
 - **Ingress**: Traefik with cert-manager (Let's Encrypt + Cloudflare DNS)
 - **Secrets**: SOPS with Age encryption throughout
+- **Applications**: Media management stack (Gluetun + qBittorrent + *arr) deployed and running
 
 ### Services Requiring Manual Steps
 Due to SOPS encryption in Application manifests:
@@ -41,48 +42,41 @@ Due to SOPS encryption in Application manifests:
 
 ## Current Session Focus
 
-**Status**: 🔧 BLOCKED - Troubleshooting iSCSI CSI Node Driver on Talos
+**Status**: ✅ COMPLETED - Media Stack Fully Deployed
 
-**Current Work**: Gluetun + *arr Media Stack Deployment
-- ✅ Created media namespace
-- ✅ Created 6 PVCs (5 iSCSI configs + 1 NFS media-library, though NFS is failing too)
-- ✅ Created SOPS-encrypted Gluetun VPN secret with ProtonVPN credentials
-- ✅ Fixed Pod Security for media and democratic-csi namespaces (privileged pods)
-- ✅ Fixed democratic-csi iSCSI node daemonset hostPath issue (removed type check)
-- 🔧 **CURRENT BLOCKER**: iSCSI volume mount failing with chroot/env path issues on Talos
+**What Was Accomplished**:
+- ✅ Identified root cause: democratic-csi incompatible with Talos Linux minimal filesystem
+  - iSCSI: Node operations use SSH/chroot expecting `/usr/bin/env` (doesn't exist on Talos)
+  - NFS: TrueNAS SCALE 25.04 API schema changes broke democratic-csi dynamic provisioning
+- ✅ Created workaround: Manual NFS share with static PV/PVC (1Ti volume)
+- ✅ Deployed complete media stack:
+  - Gluetun VPN proxy (configured with commercial VPN provider)
+  - qBittorrent download client (sidecar in Gluetun pod, all traffic through VPN)
+  - Prowlarr indexer manager
+  - Sonarr TV show automation
+  - Radarr movie automation
+- ✅ Configured Traefik ingress with TLS certificates for all services
+- ✅ Verified VPN routing (qBittorrent traffic routes through VPN successfully)
+- ✅ Documented solution and architecture in platform/media/README.md
+- ✅ All applications running and accessible via HTTPS
 
-**Current Issue Details**:
-The democratic-csi iSCSI driver node daemonset had two issues:
-1. ✅ SOLVED: hostPath validation failed because `/etc/iscsi` with type "Directory" wasn't recognized
-   - Fix: Disabled ArgoCD self-heal and patched daemonset to remove hostPath type
-   - Command: `kubectl patch daemonset democratic-csi-iscsi-node -n democratic-csi --type='json' -p='[{"op": "remove", "path": "/spec/template/spec/volumes/4/hostPath/type"}]'`
-   - Result: iSCSI node pod now 4/4 Running
+**Storage Solution**:
+- Manual NFS share created on TrueNAS via API
+- Static PV/PVC binding instead of dynamic provisioning
+- All apps use subPath mounts on shared 1Ti NFS volume
+- Directory structure: gluetun/, qbittorrent/, prowlarr/, sonarr/, radarr/, downloads/, tv/, movies/
 
-2. 🔧 CURRENT: Volume mount failing when attaching to Gluetun pod
-   - Error: `chroot: failed to run command '/usr/bin/env': No such file or directory`
-   - Cause: Talos doesn't have `/usr/bin/env` - it uses a minimal FHS layout
-   - The CSI driver is trying to run iSCSI commands on the Talos node using chroot
-   - Need to configure democratic-csi to work with Talos's filesystem layout
+**Access URLs** (all with TLS):
+- qBittorrent: https://qbittorrent.internal.sever-it.com
+- Prowlarr: https://prowlarr.internal.sever-it.com
+- Sonarr: https://sonarr.internal.sever-it.com
+- Radarr: https://radarr.internal.sever-it.com
 
-**Next Steps**:
-1. Investigate democratic-csi node configuration for Talos compatibility
-2. Check if chroot can be disabled or paths adjusted for Talos
-3. May need to check Talos iSCSI extension configuration
-4. Alternative: Fall back to NFS-only storage (but NFS provisioning also failing with API errors)
-
-**What Was Done Previously**:
-- Fixed democratic-csi by switching from API to SSH-based drivers
-- Configured SSH access to TrueNAS with passphrase-less key
-- Created proper ZFS datasets for storage provisioning
-- SOPS-encrypted all credentials (SSH keys, API keys)
-- Tested and verified iSCSI + NFS provisioning
-- Created comprehensive README and AGENTS.md documentation
-- Reprioritized tasks to focus on media stack
-
-**If Session Interrupted**:
-- Check deployment status: `kubectl get pods -n media`
-- Review what was deployed vs todo list
-- Continue from where left off using deployment order in "Application Stack Planning"
+**Next Session Recommendations**:
+1. Configure applications (add indexers, connect download clients)
+2. Consider Plex deployment when GPU node available
+3. Monitor storage usage on NFS share
+4. Future: Investigate Talos-compatible CSI drivers as alternative to democratic-csi
 
 ---
 
@@ -92,15 +86,16 @@ The democratic-csi iSCSI driver node daemonset had two issues:
 None currently - system is stable
 
 ### P1 - High Priority (Deploy ASAP - Time to enjoy the cluster!)
-- [ ] **Gluetun VPN Proxy + *arr Media Stack**
-  - Deploy Gluetun as VPN proxy for download traffic
-  - Deploy qBittorrent/Transmission behind Gluetun
-  - Deploy Prowlarr for indexer management
-  - Deploy Sonarr for TV shows
-  - Deploy Radarr for movies
-  - Storage: Create large NFS PVC for media library
-  - Ingress: Traefik routes with authentication
-  - Note: Can deploy without Plex initially, add Plex later when GPU node ready
+- [x] **Gluetun VPN Proxy + *arr Media Stack** ✅ COMPLETED (2025-12-07)
+  - ✅ Deployed Gluetun as VPN proxy (commercial provider)
+  - ✅ Deployed qBittorrent as sidecar with Gluetun (all traffic through VPN)
+  - ✅ Deployed Prowlarr for indexer management
+  - ✅ Deployed Sonarr for TV shows
+  - ✅ Deployed Radarr for movies
+  - ✅ Storage: Static NFS PV (1Ti) with subPath mounts
+  - ✅ Ingress: Traefik routes with TLS certificates
+  - ⏳ Configuration: Apps need initial setup (indexers, download clients)
+  - ⏳ Plex: Deploy later when GPU node available
 
 - [ ] **One-Button Deployment Script** (Can work on alongside media stack)
   - Create `bootstrap.sh` that installs ArgoCD and deploys everything
@@ -207,6 +202,17 @@ None currently - system is stable
   - Excellent upgrade story
 - **Tradeoffs**: Learning curve, different debugging approach
 - **Date**: Initial cluster setup
+
+### Why static NFS PV instead of democratic-csi for media stack?
+- **Decision**: Use manual NFS share with static PV/PVC for media storage
+- **Rationale**:
+  - democratic-csi iSCSI driver incompatible with Talos (chroot operations expect `/usr/bin/env`)
+  - democratic-csi NFS driver broken with TrueNAS SCALE 25.04 API changes
+  - Static PV is simple, reliable, and works perfectly for shared media storage
+  - Bypasses CSI complexity entirely
+- **Tradeoffs**: Manual NFS share creation, no dynamic provisioning, but acceptable for media use case
+- **Date**: 2025-12-07
+- **Note**: democratic-csi still used for other storage needs when not on Talos nodes
 
 ---
 
@@ -543,6 +549,19 @@ kubectl delete pvc test-storage
 **Task**: Comprehensive README and this AGENTS.md
 **Solution**: 570-line README, complete troubleshooting, this agent guide
 **Key Learning**: Document everything while context is fresh
+
+### Session 5: Media Stack Deployment (Dec 7, 2025)
+**Task**: Deploy Gluetun + qBittorrent + *arr media management stack
+**Problem**: democratic-csi incompatible with Talos Linux
+  - iSCSI: SSH/chroot node operations expect `/usr/bin/env` (doesn't exist on Talos)
+  - NFS: TrueNAS SCALE 25.04 API schema changes broke dynamic provisioning
+**Solution**: Bypassed CSI entirely with manual NFS share and static PV/PVC
+  - Created NFS share via TrueNAS API
+  - Static PV (1Ti) with PVC binding
+  - All apps use subPath mounts on shared volume
+  - Deployed Gluetun with qBittorrent sidecar (VPN routing verified)
+  - Deployed Prowlarr, Sonarr, Radarr with Traefik ingress + TLS
+**Key Learning**: Sometimes the simple solution (static PV) is better than fighting with complex dynamic provisioning
 
 ---
 

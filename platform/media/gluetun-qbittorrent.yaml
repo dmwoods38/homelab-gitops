@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gluetun
+  namespace: media
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gluetun
+  template:
+    metadata:
+      labels:
+        app: gluetun
+    spec:
+      containers:
+      - name: gluetun
+        image: qmcgaw/gluetun:latest
+        securityContext:
+          capabilities:
+            add:
+              - NET_ADMIN
+        env:
+        - name: VPN_SERVICE_PROVIDER
+          value: "protonvpn"
+        - name: VPN_TYPE
+          value: "openvpn"
+        - name: OPENVPN_USER
+          valueFrom:
+            secretKeyRef:
+              name: gluetun-vpn
+              key: OPENVPN_USER
+        - name: OPENVPN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: gluetun-vpn
+              key: OPENVPN_PASSWORD
+        - name: SERVER_COUNTRIES
+          value: "Sweden"  # Change to your preferred country
+        - name: FIREWALL_OUTBOUND_SUBNETS
+          value: "192.168.0.0/16,10.0.0.0/8"
+        - name: HTTPPROXY
+          value: "on"
+        - name: SHADOWSOCKS
+          value: "on"
+        - name: TZ
+          value: "America/New_York"
+        ports:
+        - containerPort: 8888
+          name: http-proxy
+          protocol: TCP
+        - containerPort: 8388
+          name: shadowsocks
+          protocol: TCP
+        - containerPort: 8080
+          name: qbit-webui
+          protocol: TCP
+        - containerPort: 6881
+          name: qbit-tcp
+          protocol: TCP
+        - containerPort: 6881
+          name: qbit-udp
+          protocol: UDP
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: media-storage
+          mountPath: /gluetun
+          subPath: gluetun
+      - name: qbittorrent
+        image: linuxserver/qbittorrent:latest
+        env:
+        - name: PUID
+          value: "1000"
+        - name: PGID
+          value: "1000"
+        - name: TZ
+          value: "America/New_York"
+        - name: WEBUI_PORT
+          value: "8080"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: media-storage
+          mountPath: /config
+          subPath: qbittorrent/config
+        - name: media-storage
+          mountPath: /downloads
+          subPath: downloads
+      volumes:
+      - name: media-storage
+        persistentVolumeClaim:
+          claimName: media-nfs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qbittorrent
+  namespace: media
+spec:
+  selector:
+    app: gluetun
+  ports:
+  - name: webui
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  - name: tcp
+    port: 6881
+    targetPort: 6881
+    protocol: TCP
+  - name: udp
+    port: 6881
+    targetPort: 6881
+    protocol: UDP

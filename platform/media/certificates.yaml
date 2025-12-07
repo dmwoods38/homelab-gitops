@@ -1,0 +1,52 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: qbittorrent-cert
+  namespace: media
+spec:
+  dnsNames:
+    - qbittorrent.internal.sever-it.com
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-dns
+  secretName: qbittorrent-tls-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: prowlarr-cert
+  namespace: media
+spec:
+  dnsNames:
+    - prowlarr.internal.sever-it.com
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-dns
+  secretName: prowlarr-tls-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: sonarr-cert
+  namespace: media
+spec:
+  dnsNames:
+    - sonarr.internal.sever-it.com
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-dns
+  secretName: sonarr-tls-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: radarr-cert
+  namespace: media
+spec:
+  dnsNames:
+    - radarr.internal.sever-it.com
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-dns
+  secretName: radarr-tls-cert
