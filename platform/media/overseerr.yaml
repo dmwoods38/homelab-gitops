@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: overseerr
+  namespace: media
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: overseerr
+  template:
+    metadata:
+      labels:
+        app: overseerr
+    spec:
+      containers:
+      - name: overseerr
+        image: linuxserver/overseerr:latest
+        env:
+        - name: PUID
+          value: "1000"
+        - name: PGID
+          value: "1000"
+        - name: TZ
+          value: "America/New_York"
+        ports:
+        - containerPort: 5055
+          name: http
+          protocol: TCP
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: media-storage
+          mountPath: /config
+          subPath: overseerr
+      volumes:
+      - name: media-storage
+        persistentVolumeClaim:
+          claimName: media-nfs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: overseerr
+  namespace: media
+spec:
+  selector:
+    app: overseerr
+  ports:
+  - name: http
+    port: 5055
+    targetPort: 5055
+    protocol: TCP

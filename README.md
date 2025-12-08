@@ -14,7 +14,7 @@ GitOps-managed Kubernetes homelab running on Talos Linux with ArgoCD, featuring 
 - **Ingress**: Traefik
 - **Certificates**: cert-manager with Let's Encrypt (Cloudflare DNS validation)
 - **Monitoring**: Prometheus + Grafana with etcd metrics
-- **Applications**: Media management stack (Gluetun VPN + qBittorrent + Prowlarr/Sonarr/Radarr)
+- **Applications**: Complete media automation stack (Gluetun VPN + qBittorrent + Prowlarr/Sonarr/Radarr + Plex + Overseerr)
 
 ## Repository Structure
 
@@ -230,11 +230,18 @@ kubectl exec -n media -c qbittorrent \
   -- curl -s ifconfig.me
 
 # Access services
+# - Plex: https://plex.internal.sever-it.com
+# - Overseerr: https://overseerr.internal.sever-it.com
 # - qBittorrent: https://qbittorrent.internal.sever-it.com
 # - Prowlarr: https://prowlarr.internal.sever-it.com
 # - Sonarr: https://sonarr.internal.sever-it.com
 # - Radarr: https://radarr.internal.sever-it.com
 ```
+
+**Note**: Plex requires GPU support. Ensure:
+- Node labeled with `nvidia.com/gpu.present=true`
+- NVIDIA device plugin running in `default` namespace
+- Default namespace has Pod Security set to `privileged`
 
 ## Service Management
 
@@ -499,21 +506,26 @@ kubectl apply -f /tmp/democratic-csi-iscsi.yaml
   - Updated .sops.yaml for Talos-specific encryption rules
 
 ### Session 4: Media Stack Deployment
-- **Task**: Deploy media management stack (Gluetun VPN + qBittorrent + Prowlarr/Sonarr/Radarr)
+- **Task**: Deploy complete media automation stack
 - **Challenges**:
   - democratic-csi iSCSI incompatible with Talos (chroot operations expect `/usr/bin/env`)
   - democratic-csi NFS dynamic provisioning broken with TrueNAS SCALE 25.04 API changes
+  - NVIDIA device plugin not scheduling (needed GPU label + Pod Security)
 - **Resolution**:
   - Created manual NFS share on TrueNAS via API
   - Deployed static NFS PV (1Ti) with PVC binding
   - All applications use subPath mounts on shared volume
   - Gluetun deployed with qBittorrent as sidecar (all traffic through VPN)
   - Prowlarr, Sonarr, Radarr deployed with Traefik ingress + TLS certificates
+  - Fixed GPU passthrough (node label + privileged Pod Security)
+  - Deployed Plex with NVIDIA GPU transcoding
+  - Deployed Overseerr for media request management
   - VPN routing verified successfully
 - **Work Done**:
   - Created `platform/media/` with complete deployment manifests
-  - Comprehensive README with architecture and configuration guide
+  - Comprehensive README with architecture, GPU setup, and configuration guide
   - All services accessible via HTTPS with Let's Encrypt certificates
+  - Media request workflow: Overseerr → Sonarr/Radarr → qBittorrent (VPN) → Plex
 
 ## Security Notes
 
