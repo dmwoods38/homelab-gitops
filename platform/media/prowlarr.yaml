@@ -30,10 +30,10 @@ spec:
         resources:
           requests:
             memory: "128Mi"
-            cpu: "100m"
+            cpu: "200m"
           limits:
             memory: "512Mi"
-            cpu: "500m"
+            cpu: "1000m"
         volumeMounts:
         - name: media-storage
           mountPath: /config
