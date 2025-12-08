@@ -2,6 +2,11 @@
 
 Automated media management stack with VPN routing, download client, and content organization.
 
+## Documentation
+
+- **[RECOVERY.md](./RECOVERY.md)** - Complete disaster recovery procedures and backup strategies
+- **[../monitoring/HARDWARE-MONITORING.md](../monitoring/HARDWARE-MONITORING.md)** - Hardware monitoring, SMART checks, and alerting setup
+
 ## Architecture
 
 ```
@@ -441,13 +446,65 @@ This deployment uses a **static NFS PV** instead of dynamic provisioning due to 
 
 All applications use subPath mounts on the shared NFS volume for efficient resource usage.
 
+## Quick Reference
+
+### Service URLs
+
+All services accessible via Traefik with TLS:
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| Plex | https://plex.internal.sever-it.com | Media server (also LoadBalancer: 192.168.2.225:32400) |
+| Overseerr | https://overseerr.internal.sever-it.com | Request management |
+| qBittorrent | https://qbittorrent.internal.sever-it.com | Download client |
+| Prowlarr | https://prowlarr.internal.sever-it.com | Indexer management |
+| Sonarr | https://sonarr.internal.sever-it.com | TV show management |
+| Radarr | https://radarr.internal.sever-it.com | Movie management |
+
+### Default Credentials
+
+- **qBittorrent**: `admin` / (check pod logs for temp password on first boot)
+- **All *arr apps**: No authentication by default (configure in Settings → General → Authentication)
+
+### Critical Paths
+
+- **NFS Share**: `192.168.2.30:/mnt/default/media`
+- **Media Libraries**: `/tv`, `/movies`
+- **Downloads**: `/downloads`
+- **Config Directories**: `/mnt/default/media/{app-name}/`
+
+### Common Commands
+
+**Check all pods:**
+```bash
+kubectl get pods -n media
+```
+
+**Check VPN IP:**
+```bash
+kubectl exec -n media -c qbittorrent $(kubectl get pod -n media -l app=gluetun -o jsonpath='{.items[0].metadata.name}') -- curl -s ifconfig.me
+```
+
+**View logs:**
+```bash
+kubectl logs -n media -l app=<app-name> --tail=50 -f
+```
+
+**Get qBittorrent temp password:**
+```bash
+kubectl logs -n media -c qbittorrent $(kubectl get pod -n media -l app=gluetun -o jsonpath='{.items[0].metadata.name}') | grep "temporary password"
+```
+
 ## Future Enhancements
 
 - [x] Plex Media Server with GPU transcoding ✅
 - [x] Overseerr for request management ✅
+- [x] FlareSolverr for Cloudflare-protected indexers ✅
 - [ ] Bazarr for subtitle management
 - [ ] Tautulli for Plex statistics and monitoring
 - [ ] Readarr for book/audiobook management
 - [ ] Lidarr for music management
 - [ ] Plex Meta Manager for collections and metadata
 - [ ] Notifiarr for advanced notifications
+- [ ] Prometheus + Grafana monitoring stack
+- [ ] Automated backups of config directories
