@@ -34,13 +34,13 @@ spec:
                             protocol: https
                             host: 192.168.2.30
                             port: 443
-                            apiKey: ENC[AES256_GCM,data:/LqrDGGhmgI4LyB0lXT6BVSO9U9adoUr7F0DdeT5NfuW1a6lIQ9nk4b5fZLYVxz85+BroGjQTMj1aiO55LE8Utzy,iv:Apr036uahPg5QSMlOCySTeuFLmh5Tr89aPxtJ/8mW24=,tag:ZVNvhpQJj/oGBfheTw4H6A==,type:str]
+                            apiKey: ENC[AES256_GCM,data:4yEBX/UAd3dcqbUZIhMFXXq0mcdn+KyaZJiQcKvmTQGwja66Jl3dZ1gWQZF7r0St7+wwmgm0AqaIXXw5FCGzyrOv,iv:Tz0ieZz89vaKpMSV8RD3arnANBWWH5TRhrvkjoEAFt0=,tag:oIshu2ZDJoZ3eF5ov3LsAA==,type:str]
                             allowInsecure: true
                         sshConnection:
                             host: 192.168.2.30
                             port: 22
                             username: root
-                            privateKey: ENC[AES256_GCM,data:QJF2U1PQFw+tKuNoGQPJx3L23UftvoDgF/6LluVzAvEjBbBhDbRyyZooAexvIKSx9B/xaGUB+mW7eyTbj1pAk19BTbCG+LzjbAHXrYYJ7rKG6z0RPV7oNMYLhERYupgoPZzlyth5ChrPOQHpZfNXvtx04kM8HsgQqBFIcdtUBQAFOONp2qS3zB9kLh5rdTqYSBTW3DdNGettqT5HBF+YBO1lXtmwgr5DkatBMFukNR3szb/jtAq/e56iog/9QLAfS+nCJ90D/We23y6eg8i9jZA0tMYKzSEdAsiMbcXFz07x8hJekYi4WFEivt7W8nMNLm9ReH0lkOF6fbhDyX2cbNa3dU13fQg4+iRlmL2ev6188yFIt8Q4TGU+Z5ekDIxSb0UE7PIStBrjtMo3iqxVbkhhZpnlJXorJgtSEH7sFwuhz1d0rrAD4pW1bpGoXzwq9cY+Zu0IL2su1SSa4nYmu6312UceZlhiKuDAjcsxeckuEZVMO8WJLkmEGdbAR52WfZPvbtiXTGnDGUqN+6UB7gHL9iMgP3zNkmOSkvafKOqYWM0=,iv:Km7uyXvME7VgA/p//yAEbNlROVGr2muetwzHmDR43UI=,tag:F680IxqmOWq8tuDhHBtADw==,type:str]
+                            privateKey: ENC[AES256_GCM,data:Wd52DFoPragmWX8Jj9LvM0HMwFAtoMZ7aBCQlmBDw6q55X3lUDq4JcFhcipoHllzV9ML1mxKMWKWZzLszLjDn2foarJFOKw8+Q7vvN0vHyYhGN/1EQNSs/F1D3mW/+DWLgWAtuyLtWE6R3NJmphKypARwb/O1TBg0ReUfhj54/iRFiErgHh/7n1lL4rPJVoYDGv6bcAqNKQTtg4GFY9vwgZz2IygcSbvWIVoTm0jAr92wqyzkMRVySeOQ7vfar4wDJIM/n8AI3r8gTHyZ57J1aJOq7cJA2CE9GHqx4FODMdMp0CA0KQ+T6GiqERVKiFDBDDXROdoFpq78Z+VNnj7f8jShY4A8KNUKVgr7/o1ljBobMaIC1ZJqwyXLQxYZuJwpdVl6qKz/dVzsM5jvKGgVeILoYz238jl7D2K6e+xjong1OhgDAHaaJqq7GXZlnPROqFuCOr/V3luqQWpunl8dV6AfKvrTDIMEHTQcgwr1FN2JKkzPM0KqLT4uuA52AwE+hJ4z3KqXHYNNaeiEWUrmeB1IQVBl5YcgfKOyPPPERPzURw=,iv:zDkbogz5y1jIW5ocG2/sjbTgoPpnM2Q5ndvfJozS6hU=,tag:yrKRvMOj0JuHv1BmGzX9PA==,type:str]
                         zfs:
                             cli:
                                 sudoEnabled: false
@@ -77,13 +77,13 @@ sops:
         - recipient: age1033ld5gtn23xsz9lateded3kpssp62hkhjq9vs3jza3ad63uggnsqw5xhd
           enc: |
             -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBqUVlBcUg2NEFtbWNySDVQ
-            ZlA2c050UWdhQnZ0VExoM2ZKZW1heHlhZFdvCmpzcVAzNml0NXJRUUYzOGpIRXpj
-            QkFrbmNyc2JyVXVrL1Z2Unl5a2l5T1UKLS0tIEMyRTZpRVJsS3h2T1p3TzQwdlFo
-            dUNMc2ZjRTF3WVR5dzh2dEdTd25IRDgKa/vtK/aHQZPcU2YAW9zf29eoAwV4YGkb
-            W9eMkVF0VAvFr5L3A4t1M5HDgcnQQ+6HW43casCDQh7z5jaq6OOX9g==
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBVdlJIa0Z4S09CRTRLRWRo
+            OC93cjNSdnlNREplQ2M5Z09XbmQyL3BqcmpRCkVKUGcrbnNaM2tkSmpvVnRldXdw
+            VHNoYWxXWlhVbHFlTUN5WTdRL2JJdXcKLS0tIFk1dlJrbVZCNEJvanpiSTl5bTl6
+            N1BSNjR4QXZMQmhlb2YrMGRVc25VRWcKsE8jhOdeFpuK0OLJtG2aBqNBEHm9me/M
+            1WEz1kW0akYRIEwvpCBwtBE0kJh1HyiTkNQQ90b53PpmP3x0kseY2w==
             -----END AGE ENCRYPTED FILE-----
-    lastmodified: "2025-12-06T20:24:47Z"
-    mac: ENC[AES256_GCM,data:zeO6cFtNyNY5N5LtOM9RIRbhNJfqnNSdl13I6jJFR9rZZO+iJFJ1lf1a/vv73bicHrSgthR1nOcyjh8FRJnn20FWEM20rxTj6cQnOSfzvGhmmadtDcgHqeBeeuUmajSt4PRwemoFR0RVsuJ+gHCybVkATVBmZ0KucUfTpkIxegE=,iv:lHz0BWqFWIfKk40RX48qY8IkkaJMLEgZ6S1RL/nq844=,tag:yZ9aYsfxCGyTjtrOVNbSDQ==,type:str]
+    lastmodified: "2025-12-08T18:07:13Z"
+    mac: ENC[AES256_GCM,data:S4dJbrofDHXG6HSDxBIcGXf4Zuwc+T2zyHHlNG2Tv+M2vvayGO0R9Kn986fh4laMohHwN124o1jzuM3s7o5mhEw3UNnBdXAjwwkjUmCgkoixWxrAZ3NGD1sqgrYekJ2cXtlQI1xvTYH8JP36o6o5A6iQs0LQLAT2+NQQtv3pgJM=,iv:rL0VwFzEUjxvHeo2ykXxFjy1NMSm+yyfPZKrK/gElxo=,tag:2ok+vUptX/fK1EKowWCqgQ==,type:str]
     encrypted_regex: ^(data|stringData|apiKey|privateKey)$
     version: 3.11.0
