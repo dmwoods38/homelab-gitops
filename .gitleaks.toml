@@ -1,0 +1,23 @@
+# Gitleaks configuration for homelab-gitops
+# Detects secrets while allowing legitimate exceptions
+
+title = "Gitleaks config for homelab-gitops"
+
+[allowlist]
+description = "Allowlist for legitimate use cases"
+
+# Ignore SOPS-encrypted files - they're already encrypted
+paths = [
+    '''\.sops\.yaml$''',
+    '''SECURITY-INCIDENT-.*\.md$''',
+]
+
+# Allow the OLD REVOKED credentials in security incident reports
+regexes = [
+    '''s\.wh72MLXFxoN69Qmsvfca3TKm''',  # Old revoked OpenBao token
+    '''2-w9S8Dlb6lowTJL8mQCI3tcIYpEvFZB3n1VcJOtnuytUlu92yMOXZbj6isDWY4LbC''',  # Old revoked TrueNAS key
+    '''<[A-Z_]+>''',  # Placeholder patterns
+    '''<[A-Z_]+_[A-Z_]+>''',
+    '''<[A-Z_]+_[A-Z_]+_[A-Z_]+>''',
+    '''ENC\[AES256_GCM,data:.*''',  # SOPS encrypted content
+]

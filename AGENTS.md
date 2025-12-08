@@ -404,6 +404,52 @@ jobs:
 4. **Document decisions** - Add to Technical Decisions Log for non-obvious choices
 5. **Update README** if user-facing procedures change
 
+### ⚠️ CRITICAL: Never Commit Secrets or Credentials ⚠️
+
+**MANDATORY RULES** - Violation requires immediate credential rotation:
+
+1. **NEVER include actual credentials in documentation**
+   - ❌ BAD: `root_token: s.wh72MLXFxoN69Qmsvfca3TKm`
+   - ✅ GOOD: `root_token: <ROOT_TOKEN_FROM_BACKUP>`
+   - ❌ BAD: `API_KEY: 2-w9S8Dlb6lowTJL8mQCI...`
+   - ✅ GOOD: `API_KEY: <TRUENAS_API_KEY>`
+
+2. **ALWAYS use placeholders in examples**
+   - Wrap placeholders in angle brackets: `<PLACEHOLDER>`
+   - Be specific: `<OPENBAO_ROOT_TOKEN>` not just `<TOKEN>`
+   - Add context: `<UNSEAL_KEY_1>`, `<UNSEAL_KEY_2>`, etc.
+
+3. **Pre-commit verification checklist**:
+   ```bash
+   # Before committing ANY documentation or config:
+   git diff                    # Review all changes
+   git diff | grep -i token    # Search for "token"
+   git diff | grep -i key      # Search for "key"
+   git diff | grep -i password # Search for "password"
+   git diff | grep -i secret   # Search for "secret"
+   git diff | grep -E "[0-9a-zA-Z]{20,}" # Look for long strings
+   ```
+
+4. **Examples that REQUIRE placeholders**:
+   - OpenBao unseal keys, root tokens, auth tokens
+   - TrueNAS API keys, SSH keys
+   - Database passwords, API credentials
+   - VPN credentials, auth tokens
+   - Any value from `~/openbao-keys.yaml`, `~/.ssh/`, or SOPS files
+
+5. **If you accidentally commit a secret**:
+   - STOP immediately, do NOT push
+   - If already pushed: `git revert` immediately
+   - Rotate ALL exposed credentials (tokens, keys, passwords)
+   - Document incident in `SECURITY-INCIDENT-YYYY-MM-DD.md`
+   - Update this file with lessons learned
+
+6. **Safe documentation practices**:
+   - Show command syntax with placeholders
+   - Reference where to find actual values: "Get token from ~/openbao-keys.yaml"
+   - Use environment variables in examples: `bao login $ROOT_TOKEN`
+   - Never copy-paste from actual systems into documentation
+
 ### Before Running Out of Credits
 **CRITICAL**: If you notice you're approaching token limits:
 1. **Update "Current Session Focus"** with current state and next steps
