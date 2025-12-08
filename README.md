@@ -8,7 +8,6 @@ GitOps-managed Kubernetes homelab running on Talos Linux with ArgoCD, featuring 
 - **Node**: `sever-it01` at 192.168.2.20:6443
 - **GitOps**: ArgoCD managing all applications
 - **Storage**: TrueNAS SCALE 25.04.2.1 at 192.168.2.30
-  - iSCSI block storage via democratic-csi
   - NFS shared storage via democratic-csi
 - **Load Balancer**: MetalLB in L2 mode
 - **Ingress**: Traefik
@@ -23,7 +22,6 @@ GitOps-managed Kubernetes homelab running on Talos Linux with ArgoCD, featuring 
 ├── argo/
 │   ├── apps/                    # ArgoCD Application manifests (SOPS encrypted)
 │   │   ├── argocd.yaml          # ArgoCD self-management
-│   │   ├── democratic-csi-iscsi.sops.yaml
 │   │   ├── democratic-csi-nfs.sops.yaml
 │   │   └── ...
 │   └── argocd-install.yaml      # Initial ArgoCD installation
