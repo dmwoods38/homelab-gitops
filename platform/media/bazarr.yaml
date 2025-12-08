@@ -1,0 +1,69 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bazarr
+  namespace: media
+  labels:
+    app: bazarr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bazarr
+  template:
+    metadata:
+      labels:
+        app: bazarr
+    spec:
+      containers:
+      - name: bazarr
+        image: linuxserver/bazarr:latest
+        env:
+        - name: PUID
+          value: "1000"
+        - name: PGID
+          value: "1000"
+        - name: TZ
+          value: "America/New_York"
+        ports:
+        - containerPort: 6767
+          name: http
+        volumeMounts:
+        - name: media-storage
+          mountPath: /config
+          subPath: bazarr
+        - name: media-storage
+          mountPath: /tv
+          subPath: tv
+        - name: media-storage
+          mountPath: /movies
+          subPath: movies
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: media-storage
+        persistentVolumeClaim:
+          claimName: media-nfs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bazarr
+  namespace: media
+  labels:
+    app: bazarr
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 6767
+    targetPort: 6767
+    protocol: TCP
+  selector:
+    app: bazarr

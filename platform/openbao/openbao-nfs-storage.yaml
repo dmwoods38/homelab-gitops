@@ -1,0 +1,29 @@
+---
+# Static NFS PersistentVolume for OpenBao
+# Requires NFS share to exist on TrueNAS at /mnt/default/openbao
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: openbao-nfs
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: 192.168.2.30
+    path: /mnt/default/openbao
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: openbao-data
+  namespace: openbao
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  volumeName: openbao-nfs

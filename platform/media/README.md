@@ -68,6 +68,13 @@ Internet → Gluetun (VPN) → qBittorrent → NFS Storage
 - **Features**: User requests, approval workflows, notifications
 - **WebUI**: Port 5055
 
+### Bazarr
+- **Purpose**: Subtitle management and automation
+- **Integration**: Connects to Sonarr and Radarr
+- **Features**: Automatic subtitle download, multiple languages, subtitle providers
+- **WebUI**: Port 6767
+- **Storage**: Access to TV and movie libraries for subtitle placement
+
 ## Storage Layout
 
 All applications share a single NFS PV (1Ti) with subdirectories:
@@ -83,6 +90,7 @@ All applications share a single NFS PV (1Ti) with subdirectories:
 ├── plex/              # Plex config and metadata
 ├── plex-transcode/    # Temporary transcoding files
 ├── overseerr/         # Overseerr config
+├── bazarr/            # Bazarr config
 ├── downloads/         # Shared download directory
 ├── tv/                # TV show library
 └── movies/            # Movie library
@@ -137,13 +145,15 @@ kubectl apply -f prowlarr.yaml
 kubectl apply -f sonarr.yaml
 kubectl apply -f radarr.yaml
 
-# 6. Deploy Plex and Overseerr
+# 6. Deploy Plex, Overseerr, and Bazarr
 kubectl apply -f plex.yaml
 kubectl apply -f overseerr.yaml
+kubectl apply -f bazarr.yaml
 
 # 7. Create TLS certificates
 kubectl apply -f certificates.yaml
 kubectl apply -f plex-overseerr-certificates.yaml
+kubectl apply -f bazarr-ingress.yaml
 
 # 8. Configure ingress
 kubectl apply -f ingress.yaml
@@ -323,7 +333,48 @@ All services accessible via Traefik with TLS:
    - Settings → Notifications
    - Add Discord, Slack, Email, etc.
 
-### 7. Using Overseerr for Requests
+### 7. Bazarr Configuration
+
+1. Access https://bazarr.internal.sever-it.com
+
+2. **Add Sonarr**:
+   - Settings → Sonarr
+   - Click "Add"
+   - **Address**: `sonarr.media.svc.cluster.local`
+   - **Port**: `8989`
+   - **API Key**: Get from Sonarr (Settings → General → API Key)
+   - **Test** connection, then **Save**
+
+3. **Add Radarr**:
+   - Settings → Radarr
+   - Click "Add"
+   - **Address**: `radarr.media.svc.cluster.local`
+   - **Port**: `7878`
+   - **API Key**: Get from Radarr (Settings → General → API Key)
+   - **Test** connection, then **Save**
+
+4. **Configure Subtitle Providers**:
+   - Settings → Providers
+   - Click **"+"** to add providers
+   - Popular free providers:
+     - **OpenSubtitles** (requires free account)
+     - **Subscene**
+     - **TVSubtitles**
+   - Configure credentials if required
+   - Enable and prioritize providers
+
+5. **Configure Languages**:
+   - Settings → Languages
+   - **Languages Filter**: Select languages you want (e.g., English, Spanish)
+   - **Default Enabled**: Check boxes for languages
+   - **Subtitles Directory**: Leave as default (alongside media files)
+
+6. **Enable Automatic Search** (optional):
+   - Settings → Sonarr → **Download Only Monitored**
+   - Settings → Radarr → **Download Only Monitored**
+   - Bazarr will automatically search for missing subtitles
+
+### 8. Using Overseerr for Requests
 
 **Request Workflow**:
 ```
@@ -456,6 +507,7 @@ All services accessible via Traefik with TLS:
 |---------|-----|---------|
 | Plex | https://plex.internal.sever-it.com | Media server (also LoadBalancer: 192.168.2.225:32400) |
 | Overseerr | https://overseerr.internal.sever-it.com | Request management |
+| Bazarr | https://bazarr.internal.sever-it.com | Subtitle management |
 | qBittorrent | https://qbittorrent.internal.sever-it.com | Download client |
 | Prowlarr | https://prowlarr.internal.sever-it.com | Indexer management |
 | Sonarr | https://sonarr.internal.sever-it.com | TV show management |
@@ -500,7 +552,7 @@ kubectl logs -n media -c qbittorrent $(kubectl get pod -n media -l app=gluetun -
 - [x] Plex Media Server with GPU transcoding ✅
 - [x] Overseerr for request management ✅
 - [x] FlareSolverr for Cloudflare-protected indexers ✅
-- [ ] Bazarr for subtitle management
+- [x] Bazarr for subtitle management ✅
 - [ ] Tautulli for Plex statistics and monitoring
 - [ ] Readarr for book/audiobook management
 - [ ] Lidarr for music management
