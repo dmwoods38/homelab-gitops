@@ -28,9 +28,14 @@ Internet → Gluetun (VPN) → qBittorrent → NFS Storage
 - **WebUI**: Port 8080 (accessed via qbittorrent service)
 - **Storage**: Downloads to shared NFS volume
 
+### FlareSolverr
+- **Purpose**: Bypass Cloudflare protection for indexers
+- **Integration**: Used as proxy by Prowlarr for protected sites
+- **WebUI**: Port 8191 (API only, no web interface)
+
 ### Prowlarr
 - **Purpose**: Central indexer management
-- **Integration**: Connects to Sonarr and Radarr
+- **Integration**: Connects to Sonarr and Radarr, uses FlareSolverr for Cloudflare-protected indexers
 - **WebUI**: Port 9696
 
 ### Sonarr
@@ -117,22 +122,25 @@ kubectl apply -f media-storage.yaml
 # 2. Deploy Gluetun + qBittorrent
 kubectl apply -f gluetun-qbittorrent.yaml
 
-# 3. Deploy Prowlarr
+# 3. Deploy FlareSolverr (for Cloudflare-protected indexers)
+kubectl apply -f flaresolverr.yaml
+
+# 4. Deploy Prowlarr
 kubectl apply -f prowlarr.yaml
 
-# 4. Deploy Sonarr and Radarr
+# 5. Deploy Sonarr and Radarr
 kubectl apply -f sonarr.yaml
 kubectl apply -f radarr.yaml
 
-# 5. Deploy Plex and Overseerr
+# 6. Deploy Plex and Overseerr
 kubectl apply -f plex.yaml
 kubectl apply -f overseerr.yaml
 
-# 6. Create TLS certificates
+# 7. Create TLS certificates
 kubectl apply -f certificates.yaml
 kubectl apply -f plex-overseerr-certificates.yaml
 
-# 7. Configure ingress
+# 8. Configure ingress
 kubectl apply -f ingress.yaml
 kubectl apply -f plex-overseerr-ingress.yaml
 ```
@@ -172,6 +180,27 @@ kubectl get svc -n media
 kubectl get ingressroute -n media
 ```
 
+### Fix NFS Permissions (if needed)
+
+If you encounter "directory not writable" errors, fix permissions:
+
+```bash
+# Get pod names
+SONARR_POD=$(kubectl get pod -n media -l app=sonarr -o jsonpath='{.items[0].metadata.name}')
+RADARR_POD=$(kubectl get pod -n media -l app=radarr -o jsonpath='{.items[0].metadata.name}')
+GLUETUN_POD=$(kubectl get pod -n media -l app=gluetun -o jsonpath='{.items[0].metadata.name}')
+
+# Fix ownership (media apps run as uid 1000)
+kubectl exec -n media $SONARR_POD -- chown -R 1000:1000 /tv
+kubectl exec -n media $SONARR_POD -- chmod -R 775 /tv
+
+kubectl exec -n media $RADARR_POD -- chown -R 1000:1000 /movies
+kubectl exec -n media $RADARR_POD -- chmod -R 775 /movies
+
+kubectl exec -n media -c qbittorrent $GLUETUN_POD -- chown -R 1000:1000 /downloads
+kubectl exec -n media -c qbittorrent $GLUETUN_POD -- chmod -R 775 /downloads
+```
+
 ## Access URLs
 
 All services accessible via Traefik with TLS:
@@ -195,10 +224,38 @@ All services accessible via Traefik with TLS:
 ### 2. Prowlarr Setup
 
 1. Access https://prowlarr.internal.sever-it.com
-2. Add indexers in Settings → Indexers
-3. Add applications:
-   - **Sonarr**: `http://sonarr.media.svc.cluster.local:8989`
-   - **Radarr**: `http://radarr.media.svc.cluster.local:7878`
+
+2. **Configure FlareSolverr** (for Cloudflare-protected indexers):
+   - Go to Settings → Indexers (tab at top)
+   - Scroll to **"Indexer Proxies"** section
+   - Click **"+"** to add FlareSolverr
+   - Fill in:
+     - Name: `FlareSolverr`
+     - Host: `http://flaresolverr.media.svc.cluster.local:8191/`
+     - Request Timeout: `60`
+   - Click **Test**, then **Save**
+
+3. **Add indexers**:
+   - Go to Indexers (main page)
+   - Click **"Add Indexer"**
+   - Add public indexers (examples):
+     - **1337x** (requires FlareSolverr - select it in "Indexer Proxy" dropdown)
+     - **YTS** (movies, no Cloudflare protection)
+     - **EZTV** (TV shows, no Cloudflare protection)
+     - **TorrentGalaxy**
+   - For Cloudflare-protected indexers: Edit indexer → Select **FlareSolverr** in "Indexer Proxy" dropdown
+
+4. **Add applications**:
+   - Settings → Apps
+   - Add **Sonarr**:
+     - Prowlarr Server: `http://prowlarr.media.svc.cluster.local:9696`
+     - Sonarr Server: `http://sonarr.media.svc.cluster.local:8989`
+     - API Key: Get from Sonarr (Settings → General → API Key)
+   - Add **Radarr**:
+     - Prowlarr Server: `http://prowlarr.media.svc.cluster.local:9696`
+     - Radarr Server: `http://radarr.media.svc.cluster.local:7878`
+     - API Key: Get from Radarr (Settings → General → API Key)
+   - Click **"Sync App Indexers"** to push indexers to both apps
 
 ### 3. Sonarr Configuration
 
