@@ -43,6 +43,10 @@ spec:
           value: "on"
         - name: SHADOWSOCKS
           value: "on"
+        - name: VPN_PORT_FORWARDING
+          value: "on"
+        - name: VPN_PORT_FORWARDING_PROVIDER
+          value: "protonvpn"
         - name: TZ
           value: "America/New_York"
         ports:
