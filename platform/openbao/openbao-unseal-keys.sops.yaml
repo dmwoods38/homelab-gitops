@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Secret
+metadata:
+    name: openbao-unseal-keys
+    namespace: openbao
+type: Opaque
+stringData:
+    key_1: ENC[AES256_GCM,data:8y+U7qse1kSYrajUSZUhvXFkvtcR7wMhwDlLGBzAff3NArsA6P50NLQ1ok4=,iv:xm+c/wUygOHDdRT/mES+JjvYNRmf8w5uPU0aGKl+wko=,tag:78FfISSrsaUJdMPvlDvGRQ==,type:str]
+    key_2: ENC[AES256_GCM,data:0oOrtP6wC+2r5qVoimQiTDMIlwv19277pEvVGzB07Snmj6CpoKGELQPsgDk=,iv:k7RTKyBUGOeRU+EyU+kPt59RMMqOsn8AcdG4N8kpkOw=,tag:XPXt2CFVc2d+ynqzlaeA0w==,type:str]
+    key_3: ENC[AES256_GCM,data:SEPPYtR5uyrRP4N26EJYUxSHnDvr+cOevllOD3KjSNbMX11gqGaFuj3BTo8=,iv:9z5Aq+KuEJgv47rg9cXqSD74AahVkoMPZnfVWJthUR4=,tag:o5cte/RSeO6ZjDT/tvkCLw==,type:str]
+sops:
+    age:
+        - recipient: age1033ld5gtn23xsz9lateded3kpssp62hkhjq9vs3jza3ad63uggnsqw5xhd
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBaVXRZRnVXTHBmeml0L05D
+            ZXdHWE9Tc2hXZ0E3UDhXTlAxMGZ4OVA4U0R3Ck8vOGZRek9wa2lIelFUSVJwcVVn
+            YnhRemgxdXZhd1pPUVUrV2ovS1JmbnMKLS0tIDlRMmJ4V25US0M5MTZXMzdOME5N
+            RCs2cWZTb2xRSWw4ek54WFZOK2x1YU0Krqu+duIMbvq0N81lNxKLT4a8MRw+lvlX
+            6qjvGhIhU32YVVs60Ouorj+SP9RAoB0kKMwfDWu/OCuA6W2nISwlmA==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2025-12-11T16:49:50Z"
+    mac: ENC[AES256_GCM,data:nF7NJi08u1SmfvKmQux76FkfOZob9S+NLtDTjiFvMfsQMrtpWU0PXilfiWuES/BK7AagjBijBWXeOxtTg2zqXYEwUvLR02Xny3Mw9SjEvUcJqsYkg0w+GVhqu8JxD8LjqslwPj2s3tJ2W/v2tJPuZcyZAbsEvR8tl/BIMRAsJjQ=,iv:Uz/r4vuuGMOT+nM6Qtg1lRkfye0nOiM29b4pJS+zisQ=,tag:68RTu0tk7+UyKXXyNjT2IQ==,type:str]
+    encrypted_regex: ^(data|stringData|apiKey|privateKey)$
+    version: 3.11.0

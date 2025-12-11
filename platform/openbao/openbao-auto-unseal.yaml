@@ -1,0 +1,60 @@
+---
+# ConfigMap with unseal script
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openbao-unseal-script
+  namespace: openbao
+data:
+  unseal.sh: |
+    #!/bin/sh
+
+    # Check if OpenBao is responding
+    if ! wget -q --spider --timeout=5 http://127.0.0.1:8200/v1/sys/health?uninitcode=204 2>/dev/null; then
+      exit 0  # Not ready yet, exit gracefully
+    fi
+
+    echo "Checking if OpenBao is sealed..."
+    STATUS=$(wget -qO- --timeout=5 http://127.0.0.1:8200/v1/sys/health 2>/dev/null | grep -o '"sealed":[^,]*' | cut -d: -f2)
+
+    if [ "$STATUS" = "true" ]; then
+      echo "OpenBao is sealed, unsealing..."
+
+      # Unseal with 3 keys (threshold)
+      wget -qO- --post-data "{\"key\":\"$UNSEAL_KEY_1\"}" \
+        --header "Content-Type: application/json" \
+        http://127.0.0.1:8200/v1/sys/unseal
+
+      wget -qO- --post-data "{\"key\":\"$UNSEAL_KEY_2\"}" \
+        --header "Content-Type: application/json" \
+        http://127.0.0.1:8200/v1/sys/unseal
+
+      wget -qO- --post-data "{\"key\":\"$UNSEAL_KEY_3\"}" \
+        --header "Content-Type: application/json" \
+        http://127.0.0.1:8200/v1/sys/unseal
+
+      echo "OpenBao unsealed successfully!"
+    else
+      echo "OpenBao is already unsealed."
+    fi
+---
+# Job to apply the unseal keys secret (run once after applying this file)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: apply-openbao-unseal-keys
+  namespace: openbao
+spec:
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      serviceAccountName: openbao
+      containers:
+      - name: kubectl
+        image: bitnami/kubectl:latest
+        command:
+        - sh
+        - -c
+        - |
+          kubectl apply -f /secrets/openbao-unseal-keys.sops.yaml
+      restartPolicy: Never

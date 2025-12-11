@@ -95,6 +95,44 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
+      - name: unseal-monitor
+        image: busybox:latest
+        command:
+        - sh
+        - -c
+        - |
+          echo "Auto-unseal monitor starting..."
+          sleep 10  # Give OpenBao time to start
+          while true; do
+            sh /scripts/unseal.sh
+            sleep 15
+          done
+        env:
+        - name: UNSEAL_KEY_1
+          valueFrom:
+            secretKeyRef:
+              name: openbao-unseal-keys
+              key: key_1
+        - name: UNSEAL_KEY_2
+          valueFrom:
+            secretKeyRef:
+              name: openbao-unseal-keys
+              key: key_2
+        - name: UNSEAL_KEY_3
+          valueFrom:
+            secretKeyRef:
+              name: openbao-unseal-keys
+              key: key_3
+        volumeMounts:
+        - name: unseal-script
+          mountPath: /scripts
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "50m"
+          limits:
+            memory: "64Mi"
+            cpu: "100m"
       volumes:
       - name: data
         persistentVolumeClaim:
@@ -102,6 +140,10 @@ spec:
       - name: config
         configMap:
           name: openbao-config
+      - name: unseal-script
+        configMap:
+          name: openbao-unseal-script
+          defaultMode: 0755
 ---
 apiVersion: v1
 kind: Service
