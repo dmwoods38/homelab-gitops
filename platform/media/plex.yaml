@@ -60,11 +60,11 @@ spec:
           protocol: TCP
         resources:
           requests:
-            memory: "2Gi"
+            memory: "1Gi"
             cpu: "1000m"
             nvidia.com/gpu: "1"
           limits:
-            memory: "8Gi"
+            memory: "3Gi"
             cpu: "4000m"
             nvidia.com/gpu: "1"
         volumeMounts:

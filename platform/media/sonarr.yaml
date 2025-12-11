@@ -29,10 +29,10 @@ spec:
           protocol: TCP
         resources:
           requests:
-            memory: "256Mi"
+            memory: "128Mi"
             cpu: "200m"
           limits:
-            memory: "1Gi"
+            memory: "512Mi"
             cpu: "1000m"
         volumeMounts:
         - name: media-storage

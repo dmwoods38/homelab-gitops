@@ -88,7 +88,7 @@ spec:
             memory: "256Mi"
             cpu: "200m"
           limits:
-            memory: "2Gi"
+            memory: "1536Mi"
             cpu: "2000m"
         volumeMounts:
         - name: media-storage
