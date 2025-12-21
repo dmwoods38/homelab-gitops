@@ -1,0 +1,3 @@
+# Using hostPath for etcd snapshots
+# Snapshots stored on Talos node at /var/lib/etcd-snapshots
+# Note: This is node-local storage. For production, consider backing up to remote storage.

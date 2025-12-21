@@ -1,0 +1,86 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-snapshot
+  namespace: kube-system
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: etcd-snapshot
+        spec:
+          restartPolicy: OnFailure
+          hostNetwork: true  # Required to reach Talos API on node
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            fsGroup: 0
+          initContainers:
+          - name: install-talosctl
+            image: alpine:3.19
+            command:
+            - /bin/sh
+            - -c
+            - |
+              apk add --no-cache curl
+              curl -sL https://github.com/siderolabs/talos/releases/download/v1.8.3/talosctl-linux-amd64 -o /tools/talosctl
+              chmod +x /tools/talosctl
+            volumeMounts:
+            - name: tools
+              mountPath: /tools
+          containers:
+          - name: backup
+            image: alpine:3.19
+            command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+
+              # Set talosconfig path
+              export TALOSCONFIG=/talosconfig/talosconfig
+
+              # Create backup directory if it doesn't exist
+              mkdir -p /snapshots/etcd-backups
+
+              # Create snapshot with timestamp
+              SNAPSHOT_DATE=$(date +%Y%m%d-%H%M%S)
+              SNAPSHOT_FILE="/snapshots/etcd-backups/etcd-snapshot-${SNAPSHOT_DATE}.db"
+
+              echo "Creating etcd snapshot: ${SNAPSHOT_FILE}"
+              /tools/talosctl etcd snapshot "${SNAPSHOT_FILE}" --nodes 192.168.2.20
+
+              echo "Snapshot created successfully"
+              ls -lh /snapshots/etcd-backups/
+
+              # Rotate old snapshots (keep last 7 days)
+              echo "Rotating old snapshots (keeping last 7 days)"
+              find /snapshots/etcd-backups -name "etcd-snapshot-*.db" -type f -mtime +7 -delete
+
+              echo "Backup complete"
+              ls -lh /snapshots/etcd-backups/
+            volumeMounts:
+            - name: snapshots
+              mountPath: /snapshots
+            - name: talosconfig
+              mountPath: /talosconfig
+              readOnly: true
+            - name: tools
+              mountPath: /tools
+          volumes:
+          - name: snapshots
+            hostPath:
+              path: /var/lib/etcd-snapshots
+              type: DirectoryOrCreate
+          - name: talosconfig
+            secret:
+              secretName: talosconfig
+              defaultMode: 0600
+          - name: tools
+            emptyDir: {}

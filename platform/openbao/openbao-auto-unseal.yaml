@@ -9,13 +9,14 @@ data:
   unseal.sh: |
     #!/bin/sh
 
-    # Check if OpenBao is responding
-    if ! wget -q --spider --timeout=5 http://127.0.0.1:8200/v1/sys/health?uninitcode=204 2>/dev/null; then
+    # Try to get health status
+    HEALTH=$(wget -qO- --timeout=5 http://127.0.0.1:8200/v1/sys/health 2>/dev/null)
+    if [ -z "$HEALTH" ]; then
       exit 0  # Not ready yet, exit gracefully
     fi
 
     echo "Checking if OpenBao is sealed..."
-    STATUS=$(wget -qO- --timeout=5 http://127.0.0.1:8200/v1/sys/health 2>/dev/null | grep -o '"sealed":[^,]*' | cut -d: -f2)
+    STATUS=$(echo "$HEALTH" | grep -o '"sealed":[^,]*' | cut -d: -f2)
 
     if [ "$STATUS" = "true" ]; then
       echo "OpenBao is sealed, unsealing..."
