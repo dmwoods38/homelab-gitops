@@ -22,31 +22,31 @@ spec:
               - NET_ADMIN
         env:
         - name: VPN_SERVICE_PROVIDER
-          value: "protonvpn"
+          value: "custom"
         - name: VPN_TYPE
-          value: "openvpn"
-        - name: OPENVPN_USER
+          value: "wireguard"
+        - name: VPN_ENDPOINT_IP
+          value: "149.34.251.131"
+        - name: VPN_ENDPOINT_PORT
+          value: "51820"
+        - name: WIREGUARD_PRIVATE_KEY
           valueFrom:
             secretKeyRef:
               name: gluetun-vpn
-              key: OPENVPN_USER
-        - name: OPENVPN_PASSWORD
+              key: WIREGUARD_PRIVATE_KEY
+        - name: WIREGUARD_PUBLIC_KEY
+          value: "pdlGImIP8TNM0w58hB45hudjamYGlUWmGSBSmRniljU="
+        - name: WIREGUARD_ADDRESSES
           valueFrom:
             secretKeyRef:
               name: gluetun-vpn
-              key: OPENVPN_PASSWORD
-        - name: SERVER_COUNTRIES
-          value: "Sweden"  # Change to your preferred country
+              key: WIREGUARD_ADDRESSES
         - name: FIREWALL_OUTBOUND_SUBNETS
           value: "192.168.0.0/16,10.0.0.0/8"
         - name: HTTPPROXY
           value: "on"
         - name: SHADOWSOCKS
           value: "on"
-        - name: VPN_PORT_FORWARDING
-          value: "on"
-        - name: VPN_PORT_FORWARDING_PROVIDER
-          value: "protonvpn"
         - name: TZ
           value: "America/New_York"
         ports:
