@@ -1,0 +1,9 @@
+cluster:
+  etcd:
+    # Enable automatic compaction to prevent database bloat
+    # Periodic mode compacts revisions older than the specified duration
+    extraArgs:
+      auto-compaction-mode: periodic
+      auto-compaction-retention: "5m"
+      # Increase quota to 4GB (default is 2GB)
+      quota-backend-bytes: "4294967296"

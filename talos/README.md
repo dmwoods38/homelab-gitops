@@ -92,6 +92,21 @@ Apply to control-plane nodes:
 talosctl patch machineconfig -n <NODE_IP> -p @talos/patches/remove-lb-exclusion-label.yaml
 ```
 
+### etcd-optimization.yaml
+
+Optimizes etcd performance and prevents database bloat:
+- Enables automatic compaction every 5 minutes
+- Increases quota to 4GB (from default 2GB)
+- Prevents etcd corruption and degradation over time
+
+Apply to control-plane nodes:
+
+```bash
+talosctl patch machineconfig -n <NODE_IP> -p @talos/patches/etcd-optimization.yaml
+```
+
+**Note:** etcd will apply these settings on next restart. A weekly defragmentation CronJob is also deployed in `platform/kube-system/etcd-defrag-cronjob.yaml` for additional maintenance.
+
 ## Manifests
 
 ### nvidia-runtimeclass.yaml

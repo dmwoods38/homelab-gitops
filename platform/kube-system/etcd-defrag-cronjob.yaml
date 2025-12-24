@@ -1,0 +1,82 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: etcd-defrag
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: etcd-defrag
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: etcd-defrag
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: etcd-defrag
+subjects:
+- kind: ServiceAccount
+  name: etcd-defrag
+  namespace: kube-system
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-defrag
+  namespace: kube-system
+spec:
+  # Run weekly on Sunday at 3 AM
+  schedule: "0 3 * * 0"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: etcd-defrag
+        spec:
+          serviceAccountName: etcd-defrag
+          hostNetwork: true
+          hostPID: true
+          containers:
+          - name: defrag
+            image: ghcr.io/siderolabs/talosctl:v1.11.5
+            command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Starting etcd defragmentation at $(date)"
+
+              # Get control plane nodes
+              NODES=$(kubectl get nodes -l node-role.kubernetes.io/control-plane -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}')
+
+              for NODE in $NODES; do
+                echo "Defragmenting etcd on node: $NODE"
+                talosctl -n $NODE etcd defrag --timeout 5m || echo "Warning: defrag failed for $NODE"
+              done
+
+              echo "Etcd defragmentation completed at $(date)"
+            env:
+            - name: TALOSCONFIG
+              value: /var/run/secrets/talos/talosconfig
+            volumeMounts:
+            - name: talosconfig
+              mountPath: /var/run/secrets/talos
+              readOnly: true
+          restartPolicy: OnFailure
+          volumes:
+          - name: talosconfig
+            secret:
+              secretName: talosconfig
+              defaultMode: 0400
