@@ -391,6 +391,45 @@ jobs:
 
 ## Development Patterns & Guidelines
 
+### ⚠️ CRITICAL: Never Make Destructive System Changes Without Verification ⚠️
+
+**MANDATORY RULES** - These prevent catastrophic cluster failures:
+
+1. **NEVER modify containerd/CRI runtime configs without verifying binaries exist first**
+   - ❌ BAD: Adding `BinaryName: "/usr/bin/nvidia-container-runtime"` without checking file exists
+   - ✅ GOOD: `talosctl -n 192.168.2.20 ls /usr/bin/nvidia-container-runtime` FIRST
+   - **Why**: Broken containerd config = node can't boot, total cluster failure
+
+2. **NEVER run `talosctl reset` or destructive commands without EXPLICIT user approval**
+   - ❌ BAD: Running `talosctl reset` to "fix" a problem
+   - ✅ GOOD: Ask user "Reset will WIPE ALL DATA including etcd. Confirm Y/N?"
+   - **Why**: Reset wipes disk partitions, destroys cluster completely
+
+3. **NEVER patch machine configs without understanding the impact**
+   - ❌ BAD: Patching system configs based on assumptions
+   - ✅ GOOD: Read Talos docs, verify approach, ask user before applying
+   - **Why**: Bad machine config can brick the node, require reinstall
+
+4. **NEVER assume a problem exists without testing first**
+   - ❌ BAD: "GPU not working" → immediately try to fix
+   - ✅ GOOD: Test GPU is actually broken first: `kubectl exec pod -- nvidia-smi`
+   - **Why**: "Fixing" working systems breaks them
+
+5. **ALWAYS verify backups exist before risky operations**
+   - ❌ BAD: Proceeding with destructive changes without checking backups
+   - ✅ GOOD: `talosctl -n 192.168.2.20 ls /var/lib/etcd-snapshots` to verify backups exist
+   - **Why**: No backups + destructive change = unrecoverable data loss
+
+6. **STOP and rollback after first mistake - don't compound errors**
+   - ❌ BAD: Config breaks containerd → try 5 different "fixes" → wipe cluster
+   - ✅ GOOD: Config breaks containerd → immediately revert config → node recovers
+   - **Why**: Panic-driven debugging makes things exponentially worse
+
+7. **ASK before any operation that could cause downtime**
+   - Operations requiring approval: `talosctl reset`, `talosctl upgrade`, machine config changes, etcd operations
+   - ✅ GOOD: "This requires a reboot and will cause ~5min downtime. Proceed?"
+   - **Why**: User needs to know about service interruptions
+
 ### Before Starting Any Work
 1. **Read this file first** - Get context on current state and priorities
 2. **Check cluster health**: `kubectl get nodes && kubectl get pods -A`
@@ -403,6 +442,8 @@ jobs:
 3. **Verify encryption worked**: `grep -i "enc\[" <file>` should show encrypted data
 4. **Document decisions** - Add to Technical Decisions Log for non-obvious choices
 5. **Update README** if user-facing procedures change
+6. **Verify binaries/files exist** before referencing them in configs
+7. **Ask user for approval** before any destructive or risky operations
 
 ### ⚠️ CRITICAL: Never Commit Secrets or Credentials ⚠️
 
