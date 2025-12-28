@@ -430,6 +430,65 @@ jobs:
    - ✅ GOOD: "This requires a reboot and will cause ~5min downtime. Proceed?"
    - **Why**: User needs to know about service interruptions
 
+8. **NEVER delete namespaces, PVCs, or storage without explicit confirmation**
+   - ❌ BAD: `kubectl delete namespace media` to "clean up"
+   - ❌ BAD: `kubectl delete pvc` without asking about data backup
+   - ✅ GOOD: "This PVC contains data. Have you backed it up? Confirm deletion Y/N?"
+   - **Why**: Data loss is unrecoverable
+
+9. **NEVER modify network configs (MetalLB, Traefik, DNS) without testing first**
+   - ❌ BAD: Changing MetalLB IP pool that could conflict with DHCP
+   - ❌ BAD: Modifying Traefik entrypoints without understanding impact
+   - ✅ GOOD: Test config in staging, ask user about network layout
+   - **Why**: Network issues can lock user out of entire cluster
+
+10. **NEVER perform etcd operations (snapshot, restore, defrag) during active use**
+    - ❌ BAD: Running `etcd defrag` while cluster is under load
+    - ❌ BAD: Restoring etcd snapshot without confirming current state is bad
+    - ✅ GOOD: "Defrag will briefly pause etcd. Is now a good time?"
+    - **Why**: etcd operations can cause cluster-wide outages
+
+11. **NEVER upgrade Kubernetes or Talos without version compatibility verification**
+    - ❌ BAD: Upgrading Talos 1.8 → 2.0 without checking breaking changes
+    - ❌ BAD: Upgrading K8s 1.30 → 1.31 without checking workload compatibility
+    - ✅ GOOD: Check upgrade docs, ask user about maintenance window
+    - **Why**: Incompatible upgrades can brick the cluster
+
+12. **NEVER delete or modify SOPS encryption keys**
+    - ❌ BAD: Modifying `.sops.yaml` age keys
+    - ❌ BAD: Deleting `~/.config/sops/age/keys.txt`
+    - ✅ GOOD: Never touch encryption keys unless explicitly asked
+    - **Why**: Losing keys = all encrypted secrets become unrecoverable
+
+13. **NEVER force push to git or delete branches without confirmation**
+    - ❌ BAD: `git push --force` to fix a mistake
+    - ❌ BAD: `git branch -D` to clean up old branches
+    - ✅ GOOD: Use `git revert` for mistakes, ask before deleting branches
+    - **Why**: Force push can lose work, deleted branches can't be recovered
+
+14. **NEVER modify TrueNAS storage (datasets, shares, zvols) via API without confirmation**
+    - ❌ BAD: Deleting NFS shares that workloads depend on
+    - ❌ BAD: Modifying ZFS dataset properties without understanding impact
+    - ✅ GOOD: Ask "This will modify storage config. Have workloads been drained?"
+    - **Why**: Storage changes can cause data loss or corruption
+
+15. **NEVER revoke or delete TLS certificates in production**
+    - ❌ BAD: Deleting cert-manager Certificate resources
+    - ❌ BAD: Revoking Let's Encrypt certs without replacement ready
+    - ✅ GOOD: Always have new cert before removing old one
+    - **Why**: Breaks HTTPS access to all services immediately
+
+16. **If something is working, DO NOT "fix" it without confirming it's actually broken**
+    - ❌ BAD: "Subtitles not working well" → assume GPU broken → destroy cluster
+    - ✅ GOOD: "Let me test if GPU transcoding is actually working first"
+    - **Why**: Making assumptions destroys working systems
+
+17. **NEVER delete backups (etcd snapshots, database dumps, config backups)**
+    - ❌ BAD: Deleting old etcd snapshots to "free up space"
+    - ❌ BAD: Removing backup CronJobs because "they're taking up resources"
+    - ✅ GOOD: Backups are sacred - never delete without explicit user request
+    - **Why**: Backups are the only disaster recovery option
+
 ### Before Starting Any Work
 1. **Read this file first** - Get context on current state and priorities
 2. **Check cluster health**: `kubectl get nodes && kubectl get pods -A`
