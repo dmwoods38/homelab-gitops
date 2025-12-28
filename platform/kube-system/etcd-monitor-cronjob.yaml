@@ -1,0 +1,104 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: etcd-monitor-script
+  namespace: kube-system
+data:
+  monitor.sh: |
+    #!/bin/bash
+    set -e
+
+    TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+    NODES=$(kubectl get nodes -l node-role.kubernetes.io/control-plane -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}')
+
+    echo "========================================="
+    echo "etcd Health Check - $TIMESTAMP"
+    echo "========================================="
+
+    for NODE in $NODES; do
+      echo ""
+      echo "Node: $NODE"
+      echo "-----------------------------------------"
+
+      # Get etcd database size
+      DB_SIZE=$(talosctl -n $NODE read /var/lib/etcd/member/snap/db 2>/dev/null | wc -c)
+      DB_SIZE_MB=$((DB_SIZE / 1024 / 1024))
+
+      echo "Database size: ${DB_SIZE_MB}MB (${DB_SIZE} bytes)"
+
+      # Get etcd service health
+      ETCD_HEALTH=$(talosctl -n $NODE service etcd status 2>/dev/null | grep "HEALTH" | awk '{print $2}')
+      echo "etcd health: $ETCD_HEALTH"
+
+      # Check for performance issues in logs
+      SLOW_QUERIES=$(talosctl -n $NODE logs etcd --tail 100 2>/dev/null | grep -c "took too long" || echo 0)
+      echo "Slow queries (last 100 lines): $SLOW_QUERIES"
+
+      # Warnings based on DB size
+      if [ $DB_SIZE_MB -gt 200 ]; then
+        echo "⚠️  WARNING: Database size exceeds 200MB! Immediate action needed!"
+      elif [ $DB_SIZE_MB -gt 100 ]; then
+        echo "⚠️  CAUTION: Database size exceeds 100MB. Monitor closely."
+      elif [ $DB_SIZE_MB -gt 50 ]; then
+        echo "ℹ️  INFO: Database size is growing. Normal but worth monitoring."
+      else
+        echo "✓ Database size is healthy"
+      fi
+
+      # Check if defrag is needed
+      if [ $SLOW_QUERIES -gt 10 ]; then
+        echo "⚠️  WARNING: Many slow queries detected. Consider manual defrag."
+      fi
+    done
+
+    echo ""
+    echo "========================================="
+    echo "Monitoring complete"
+    echo "========================================="
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-monitor
+  namespace: kube-system
+spec:
+  # Run every 6 hours
+  schedule: "0 */6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: etcd-monitor
+        spec:
+          serviceAccountName: etcd-defrag
+          hostNetwork: true
+          restartPolicy: OnFailure
+          containers:
+          - name: monitor
+            image: ghcr.io/siderolabs/talosctl:v1.11.5
+            command:
+            - /bin/sh
+            - /scripts/monitor.sh
+            env:
+            - name: TALOSCONFIG
+              value: /var/run/secrets/talos/talosconfig
+            volumeMounts:
+            - name: talosconfig
+              mountPath: /var/run/secrets/talos
+              readOnly: true
+            - name: script
+              mountPath: /scripts
+          volumes:
+          - name: talosconfig
+            secret:
+              secretName: talosconfig
+              defaultMode: 0400
+          - name: script
+            configMap:
+              name: etcd-monitor-script
+              defaultMode: 0755
