@@ -2,51 +2,64 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: qbittorrent-cert
+  name: qbittorrent-tls
   namespace: media
 spec:
+  secretName: qbittorrent-tls-cert
+  issuerRef:
+    name: letsencrypt-dns
+    kind: ClusterIssuer
   dnsNames:
     - qbittorrent.internal.sever-it.com
-  issuerRef:
-    kind: ClusterIssuer
-    name: letsencrypt-dns
-  secretName: qbittorrent-tls-cert
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: prowlarr-cert
+  name: prowlarr-tls
   namespace: media
 spec:
+  secretName: prowlarr-tls-cert
+  issuerRef:
+    name: letsencrypt-dns
+    kind: ClusterIssuer
   dnsNames:
     - prowlarr.internal.sever-it.com
-  issuerRef:
-    kind: ClusterIssuer
-    name: letsencrypt-dns
-  secretName: prowlarr-tls-cert
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: sonarr-cert
+  name: sonarr-tls
   namespace: media
 spec:
+  secretName: sonarr-tls-cert
+  issuerRef:
+    name: letsencrypt-dns
+    kind: ClusterIssuer
   dnsNames:
     - sonarr.internal.sever-it.com
-  issuerRef:
-    kind: ClusterIssuer
-    name: letsencrypt-dns
-  secretName: sonarr-tls-cert
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: radarr-cert
+  name: radarr-tls
   namespace: media
 spec:
+  secretName: radarr-tls-cert
+  issuerRef:
+    name: letsencrypt-dns
+    kind: ClusterIssuer
   dnsNames:
     - radarr.internal.sever-it.com
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: plex-tls
+  namespace: media
+spec:
+  secretName: plex-tls-cert
   issuerRef:
-    kind: ClusterIssuer
     name: letsencrypt-dns
-  secretName: radarr-tls-cert
+    kind: ClusterIssuer
+  dnsNames:
+    - plex.internal.sever-it.com
