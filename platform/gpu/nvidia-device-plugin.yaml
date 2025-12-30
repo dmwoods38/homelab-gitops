@@ -14,8 +14,14 @@ spec:
       labels:
         name: nvidia-device-plugin-ds
     spec:
+      nodeSelector:
+        workload: gpu  # Only run on GPU node
       runtimeClassName: nvidia  # CRITICAL: Required for device plugin to access NVIDIA libraries
       tolerations:
+      - key: workload
+        operator: Equal
+        value: gpu
+        effect: NoSchedule
       - key: nvidia.com/gpu
         operator: Exists
         effect: NoSchedule
