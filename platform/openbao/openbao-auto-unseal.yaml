@@ -9,30 +9,31 @@ data:
   unseal.sh: |
     #!/bin/sh
 
-    # Try to get health status
-    HEALTH=$(wget -qO- --timeout=5 http://127.0.0.1:8200/v1/sys/health 2>/dev/null)
-    if [ -z "$HEALTH" ]; then
+    # Get seal status (works even when sealed)
+    STATUS=$(wget -qO- http://127.0.0.1:8200/v1/sys/seal-status 2>/dev/null)
+
+    if [ -z "$STATUS" ]; then
       exit 0  # Not ready yet, exit gracefully
     fi
 
     echo "Checking if OpenBao is sealed..."
-    STATUS=$(echo "$HEALTH" | grep -o '"sealed":[^,]*' | cut -d: -f2)
+    SEALED=$(echo "$STATUS" | grep -o '"sealed":[^,]*' | cut -d: -f2)
 
-    if [ "$STATUS" = "true" ]; then
+    if [ "$SEALED" = "true" ]; then
       echo "OpenBao is sealed, unsealing..."
 
       # Unseal with 3 keys (threshold)
       wget -qO- --post-data "{\"key\":\"$UNSEAL_KEY_1\"}" \
         --header "Content-Type: application/json" \
-        http://127.0.0.1:8200/v1/sys/unseal
+        http://127.0.0.1:8200/v1/sys/unseal >/dev/null 2>&1
 
       wget -qO- --post-data "{\"key\":\"$UNSEAL_KEY_2\"}" \
         --header "Content-Type: application/json" \
-        http://127.0.0.1:8200/v1/sys/unseal
+        http://127.0.0.1:8200/v1/sys/unseal >/dev/null 2>&1
 
       wget -qO- --post-data "{\"key\":\"$UNSEAL_KEY_3\"}" \
         --header "Content-Type: application/json" \
-        http://127.0.0.1:8200/v1/sys/unseal
+        http://127.0.0.1:8200/v1/sys/unseal >/dev/null 2>&1
 
       echo "OpenBao unsealed successfully!"
     else
