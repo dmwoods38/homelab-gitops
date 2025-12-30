@@ -42,41 +42,43 @@ Due to SOPS encryption in Application manifests:
 
 ## Current Session Focus
 
-**Status**: ✅ COMPLETED - Media Stack Fully Deployed
+**Status**: ✅ COMPLETED - 3-Node HA Cluster with Media Stack
 
-**What Was Accomplished**:
-- ✅ Identified root cause: democratic-csi incompatible with Talos Linux minimal filesystem
-  - iSCSI: Node operations use SSH/chroot expecting `/usr/bin/env` (doesn't exist on Talos)
-  - NFS: TrueNAS SCALE 25.04 API schema changes broke democratic-csi dynamic provisioning
-- ✅ Created workaround: Manual NFS share with static PV/PVC (1Ti volume)
-- ✅ Deployed complete media stack:
-  - Gluetun VPN proxy (configured with commercial VPN provider)
-  - qBittorrent download client (sidecar in Gluetun pod, all traffic through VPN)
-  - Prowlarr indexer manager
-  - Sonarr TV show automation
-  - Radarr movie automation
-- ✅ Configured Traefik ingress with TLS certificates for all services
-- ✅ Verified VPN routing (qBittorrent traffic routes through VPN successfully)
-- ✅ Documented solution and architecture in platform/media/README.md
-- ✅ All applications running and accessible via HTTPS
+**What Was Accomplished** (Session: 2025-12-29 to 2025-12-30):
+- ✅ Built 3-node HA Talos Kubernetes cluster (nodes .20, .223, .49)
+- ✅ Fixed GPU transcoding on node .20 with `net.core.bpf_jit_harden: 1` sysctl
+- ✅ Deployed Plex with GPU hardware transcoding (NVIDIA GTX 1050 Ti)
+- ✅ Implemented intelligent workload distribution with node affinity/taints:
+  - Node .20 (GPU): Tainted for GPU workloads only - Plex with hardware transcoding
+  - Node .223 (media-arr): Prowlarr, Sonarr
+  - Node .49 (media-downloads): Radarr, Gluetun+qBittorrent with ProtonVPN
+- ✅ Configured Gluetun with ProtonVPN Wireguard credentials
+- ✅ Verified VPN routing (Public IP: 159.26.99.199, Los Angeles, CA)
+- ✅ All arr stack applications running and distributed across nodes
+- ✅ Comprehensive disaster recovery documentation created
 
-**Storage Solution**:
-- Manual NFS share created on TrueNAS via API
-- Static PV/PVC binding instead of dynamic provisioning
-- All apps use subPath mounts on shared 1Ti NFS volume
-- Directory structure: gluetun/, qbittorrent/, prowlarr/, sonarr/, radarr/, downloads/, tv/, movies/
+**Cluster Architecture**:
+- **HA Setup**: 3-node cluster with 2-of-3 etcd quorum
+- **GPU Node**: .20 with NVIDIA GTX 1050 Ti for Plex transcoding
+- **Workload Distribution**: Pod affinity/anti-affinity spreading similar workloads
+- **VPN**: ProtonVPN Wireguard with port forwarding enabled for qBittorrent
 
-**Access URLs** (all with TLS):
-- qBittorrent: https://qbittorrent.internal.sever-it.com
-- Prowlarr: https://prowlarr.internal.sever-it.com
-- Sonarr: https://sonarr.internal.sever-it.com
-- Radarr: https://radarr.internal.sever-it.com
+**Current Pod Distribution**:
+- Node .20 (talos-hfv-ykp): Plex (GPU transcoding)
+- Node .223 (talos-6zg-d0c): Prowlarr, Sonarr
+- Node .49 (talos-qu2-nh1): Radarr, Gluetun+qBittorrent
+
+**Documentation Created**:
+- docs/3-node-cluster-DR.md - Complete disaster recovery guide
+- docs/CLUSTER-STATUS.md - Current cluster state
+- docs/GPU-FIX-2025-12-29.md - GPU transcoding fix details
+- docs/talos-gpu-setup.md - NVIDIA GPU setup guide
 
 **Next Session Recommendations**:
-1. Configure applications (add indexers, connect download clients)
-2. Consider Plex deployment when GPU node available
-3. Monitor storage usage on NFS share
-4. Future: Investigate Talos-compatible CSI drivers as alternative to democratic-csi
+1. Configure arr applications (add indexers to Prowlarr, connect to download clients)
+2. Test qBittorrent port forwarding with ProtonVPN
+3. Monitor etcd health and cluster resource usage
+4. Configure Plex media libraries
 
 ---
 
