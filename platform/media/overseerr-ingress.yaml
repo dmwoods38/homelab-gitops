@@ -2,20 +2,20 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: bazarr-tls
+  name: overseerr-tls
   namespace: media
 spec:
-  secretName: bazarr-tls-cert
+  secretName: overseerr-tls-cert
   issuerRef:
     name: letsencrypt-dns
     kind: ClusterIssuer
   dnsNames:
-    - bazarr.internal.sever-it.com
+    - overseerr.internal.sever-it.com
 ---
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
-  name: bazarr
+  name: overseerr
   namespace: media
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-dns
@@ -24,9 +24,9 @@ spec:
     - websecure
   routes:
     - kind: Rule
-      match: Host(`bazarr.internal.sever-it.com`)
+      match: Host(`overseerr.internal.sever-it.com`)
       services:
-        - name: bazarr
-          port: 6767
+        - name: overseerr
+          port: 5055
   tls:
-    secretName: bazarr-tls-cert
+    secretName: overseerr-tls-cert

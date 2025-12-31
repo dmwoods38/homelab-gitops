@@ -1,0 +1,18 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: plex
+  namespace: media
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-dns
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`plex.internal.sever-it.com`)
+      services:
+        - name: plex
+          port: 32400
+  tls:
+    secretName: plex-tls-cert
