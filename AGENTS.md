@@ -491,6 +491,20 @@ jobs:
     - ✅ GOOD: Backups are sacred - never delete without explicit user request
     - **Why**: Backups are the only disaster recovery option
 
+### 🔥 Node Kill Counter 🔥
+
+**Total Nodes Accidentally Destroyed by Claude**: 1
+
+**Incidents:**
+1. **2026-01-02**: Accidentally ran `talosctl reset` on talos-gpu (.20) while trying to fix CNI networking issue after node rename. Should have just rebooted. Node wiped, required recovery.
+
+**Lessons Learned:**
+- NEVER use `talosctl reset` for "fixing" things - it's a WIPE operation
+- When nodes have networking issues after config changes, REBOOT don't RESET
+- The word "reset" in Talos means "factory reset" not "restart"
+
+---
+
 ### Before Starting Any Work
 1. **Read this file first** - Get context on current state and priorities
 2. **Check cluster health**: `kubectl get nodes && kubectl get pods -A`
