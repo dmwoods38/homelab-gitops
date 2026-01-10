@@ -2,22 +2,26 @@
 
 This document helps AI agents (Claude Code) maintain context across sessions and provides guidelines for smooth development workflow.
 
-**Last Updated**: 2025-12-07
-**Current Session**: Completed media stack deployment with static NFS storage
+**Last Updated**: 2026-01-10
+**Current Session**: Cluster reliability improvements - etcd HA tuning and self-healing workloads
 
 ---
 
 ## Current System State
 
 ### Infrastructure Status
-- **Cluster**: Talos Linux v1.11.5, Kubernetes v1.34.1, single-node at 192.168.2.20
+- **Cluster**: Talos Linux v1.11.5, Kubernetes v1.34.1, 3-node HA architecture
+  - **talos-nuc** (192.168.2.223): control-plane + etcd
+  - **talos-mac** (192.168.2.49): control-plane + etcd
+  - **talos-gpu** (192.168.2.20): worker-only (etcd removed for stability)
+- **etcd**: 2-node quorum (nuc + mac) - removed from GPU node due to I/O contention
 - **GitOps**: ArgoCD deployed and self-managing
 - **Storage**: Static NFS PV (1Ti) for media stack (democratic-csi has compatibility issues with Talos)
 - **Monitoring**: Prometheus + Grafana with etcd metrics
 - **Load Balancer**: MetalLB functional with L2 mode
 - **Ingress**: Traefik with cert-manager (Let's Encrypt + Cloudflare DNS)
 - **Secrets**: SOPS with Age encryption throughout
-- **Applications**: Media management stack (Gluetun + qBittorrent + *arr) deployed and running
+- **Applications**: Media management stack (Gluetun + qBittorrent + *arr + Plex) deployed and running
 
 ### Services Requiring Manual Steps
 Due to SOPS encryption in Application manifests:
@@ -26,59 +30,82 @@ Due to SOPS encryption in Application manifests:
 - **cert-manager secrets**: `sops -d platform/cert-manager/secret-cloudflare-api-token.sops.yaml | kubectl apply -f -`
 
 ### What's Working
-- ✅ Talos cluster stable and healthy
+- ✅ 3-node HA cluster stable (2-node etcd + 1 worker architecture)
 - ✅ etcd monitoring and defragmentation procedures
 - ✅ Storage provisioning (iSCSI block + NFS shared)
-- ✅ All platform services deployed
+- ✅ All platform services deployed with health probes
+- ✅ Pod priority classes protecting critical infrastructure
+- ✅ Self-healing workloads with automatic restart
+- ✅ Soft NFS mounts preventing unkillable processes
 - ✅ TLS certificates automated
 - ✅ SOPS encryption for all secrets
+- ✅ Plex GPU transcoding on dedicated worker node
 
 ### Known Issues
 1. **ArgoCD SOPS Limitation**: KSOPS plugin only works with Kustomize, not Application manifests
 2. **Manual Deployment Steps**: democratic-csi requires kubectl apply after SOPS decryption
 3. **No App of Apps**: Applications not organized with dependency management
+4. **2-node etcd**: Can only tolerate 1 control-plane failure (not 2), acceptable for homelab
 
 ---
 
 ## Current Session Focus
 
-**Status**: ✅ COMPLETED - 3-Node HA Cluster with Media Stack
+**Status**: ✅ COMPLETED - Cluster Reliability Improvements & Self-Healing Workloads
 
-**What Was Accomplished** (Session: 2025-12-29 to 2025-12-30):
-- ✅ Built 3-node HA Talos Kubernetes cluster (nodes .20, .223, .49)
-- ✅ Fixed GPU transcoding on node .20 with `net.core.bpf_jit_harden: 1` sysctl
-- ✅ Deployed Plex with GPU hardware transcoding (NVIDIA GTX 1050 Ti)
-- ✅ Implemented intelligent workload distribution with node affinity/taints:
-  - Node .20 (GPU): Tainted for GPU workloads only - Plex with hardware transcoding
-  - Node .223 (media-arr): Prowlarr, Sonarr
-  - Node .49 (media-downloads): Radarr, Gluetun+qBittorrent with ProtonVPN
-- ✅ Configured Gluetun with ProtonVPN Wireguard credentials
-- ✅ Verified VPN routing (Public IP: 159.26.99.199, Los Angeles, CA)
-- ✅ All arr stack applications running and distributed across nodes
-- ✅ Comprehensive disaster recovery documentation created
+**What Was Accomplished** (Session: 2026-01-10):
+- ✅ **Fixed NFS mount fragility**: Changed from hard to soft mounts with timeouts to prevent unkillable processes
+  - Platform services using hard NFS mounts would enter uninterruptible sleep (D state) during NFS slowdowns
+  - Required hard reboots to recover
+  - Solution: soft mounts with 60s timeout, 2 retries, interruptible mode
+- ✅ **Added health probes to all media applications**: Liveness and readiness probes for automatic restart
+  - Plex, Prowlarr, Sonarr, Radarr, Bazarr, Overseerr all now self-healing
+  - Prevents failed pods from remaining in broken state
+- ✅ **Implemented pod priority classes**: Protect etcd from resource starvation
+  - system-node-critical (2000001000) - etcd and core system components
+  - infrastructure-high (100000) - ingress, DNS, storage controllers
+  - workload-normal (10000) - media applications (default)
+  - workload-low (1000) - non-critical workloads
+  - best-effort (100) - lowest priority, first to evict
+- ✅ **Removed etcd from talos-gpu**: Converted problematic GPU node from control-plane to worker-only
+  - talos-gpu had been failing for 57+ hours with etcd issues (load average 13 on 8 cores)
+  - Root cause: I/O contention between Plex transcoding and etcd consensus
+  - Solution: 2-node etcd cluster (talos-nuc + talos-mac) with worker-only GPU node
+  - Result: talos-gpu now stable at 1% CPU, 8% memory
+- ✅ **Fixed Plex GPU support**: Added missing NVIDIA kernel modules
+  - nvidia_modeset and nvidia_drm modules required for /dev/nvidia-modeset device
+  - Plex now successfully using GPU transcoding on talos-gpu
 
-**Cluster Architecture**:
-- **HA Setup**: 3-node cluster with 2-of-3 etcd quorum
-- **GPU Node**: .20 with NVIDIA GTX 1050 Ti for Plex transcoding
-- **Workload Distribution**: Pod affinity/anti-affinity spreading similar workloads
-- **VPN**: ProtonVPN Wireguard with port forwarding enabled for qBittorrent
+**Architecture Changes**:
+- **Old**: 3-node cluster with etcd on all nodes (fragile, I/O conflicts)
+- **New**: 2-node etcd + 1 worker architecture
+  - talos-nuc (192.168.2.223): control-plane + etcd + media workloads
+  - talos-mac (192.168.2.49): control-plane + etcd
+  - talos-gpu (192.168.2.20): worker-only + Plex with GPU transcoding
 
 **Current Pod Distribution**:
-- Node .20 (talos-hfv-ykp): Plex (GPU transcoding)
-- Node .223 (talos-6zg-d0c): Prowlarr, Sonarr
-- Node .49 (talos-qu2-nh1): Radarr, Gluetun+qBittorrent
+- **talos-gpu** (worker): Plex with GPU transcoding (1% CPU, 8% memory)
+- **talos-nuc** (control-plane): All *arr apps (Prowlarr, Sonarr, Radarr, Bazarr, Overseerr)
+- **talos-mac** (control-plane): Gluetun+qBittorrent, Flaresolverr
 
-**Documentation Created**:
-- docs/3-node-cluster-DR.md - Complete disaster recovery guide
-- docs/CLUSTER-STATUS.md - Current cluster state
-- docs/GPU-FIX-2025-12-29.md - GPU transcoding fix details
-- docs/talos-gpu-setup.md - NVIDIA GPU setup guide
+**Cluster Health**:
+- etcd: 2-node quorum, both members healthy and in sync
+- All media pods: Running with health probes and priority classes
+- Resource usage: Low and stable across all nodes
+
+**Files Created/Modified**:
+- `platform/priority-classes.yaml` - New pod priority class definitions
+- `platform/media/*.yaml` - Added health probes, priority classes, resource limits to all media apps
+- `platform/media/media-storage.yaml` - Changed NFS mount from hard to soft
+- `docs/3-node-cluster-DR.md` - Updated with current architecture
+- `docs/cluster-bootstrap.md` - Updated bootstrap procedures
+- `/tmp/talos-gpu-worker.yaml` - GPU worker config with nvidia_modeset and nvidia_drm modules
 
 **Next Session Recommendations**:
-1. Configure arr applications (add indexers to Prowlarr, connect to download clients)
-2. Test qBittorrent port forwarding with ProtonVPN
-3. Monitor etcd health and cluster resource usage
-4. Configure Plex media libraries
+1. Monitor cluster stability over time to verify self-healing improvements
+2. Consider automated etcd backups (P2 priority task)
+3. Test priority class preemption under resource pressure
+4. Continue with arr application configuration (indexers, download clients)
 
 ---
 
@@ -121,12 +148,13 @@ None currently - system is stable
   - Use democratic-csi PVC for dashboards
   - Backup dashboard JSON to git
 
-- [ ] **Plex Media Server** (Blocked on GPU node)
-  - Requires: Node with GPU for transcoding
-  - Node scheduling: Use taints, tolerations, node affinity
-  - Storage: Large NFS PVC for media library (shared with *arr stack)
-  - Ingress: Remote access configuration
-  - Future: Dedicated worker node with GPU
+- [x] **Plex Media Server** ✅ COMPLETED (2026-01-10)
+  - ✅ Deployed on talos-gpu with NVIDIA GTX 1050 Ti
+  - ✅ GPU transcoding working (nvidia, nvidia_uvm, nvidia_modeset, nvidia_drm modules)
+  - ✅ Health probes configured (liveness + readiness)
+  - ✅ Priority class: workload-normal
+  - ✅ Resource limits: 3Gi memory, 4 CPU cores, 1 GPU
+  - ⏳ Configuration: Media libraries need initial setup
 
 - [ ] **OpenBao (Secrets Management)**
   - Deploy OpenBao (HashiCorp Vault fork) for secrets management
@@ -215,6 +243,40 @@ None currently - system is stable
 - **Tradeoffs**: Manual NFS share creation, no dynamic provisioning, but acceptable for media use case
 - **Date**: 2025-12-07
 - **Note**: democratic-csi still used for other storage needs when not on Talos nodes
+
+### Why remove etcd from talos-gpu?
+- **Decision**: Convert talos-gpu from control-plane (with etcd) to worker-only node
+- **Rationale**:
+  - GPU node suffered chronic etcd failures (57+ hours broken, load average 13 on 8 cores)
+  - Root cause: I/O contention between Plex transcoding and etcd raft consensus
+  - Even with CPU/memory limits, disk I/O starvation caused etcd timeouts
+  - 2-node etcd quorum is sufficient for homelab HA requirements
+  - Separates concerns: GPU workloads vs cluster consensus
+- **Tradeoffs**: Can only lose 1 control-plane node (not 2), but GPU node now stable
+- **Date**: 2026-01-10
+- **Implementation**: Used `talosctl apply-config` with worker config + GPU patches, removed etcd member
+
+### Why change NFS mounts from hard to soft?
+- **Decision**: Use soft NFS mounts with timeout instead of hard mounts
+- **Rationale**:
+  - Hard mounts caused unkillable processes in uninterruptible sleep (D state) when NFS slow
+  - Required hard reboots to recover
+  - I/O contention on NFS contributed to etcd consensus failures
+  - Soft mounts timeout after ~2 minutes instead of hanging forever
+- **Tradeoffs**: Potential data inconsistency if NFS fails during write, but better than unkillable processes
+- **Date**: 2026-01-10
+- **Configuration**: `soft,timeo=600,retrans=2,intr` mount options
+
+### Why implement pod priority classes?
+- **Decision**: Create 5-tier priority class system for pod scheduling
+- **Rationale**:
+  - Without priorities, media workloads could starve etcd during resource pressure
+  - Kubernetes needs guidance on which pods to evict when resources scarce
+  - Explicit prioritization makes cluster behavior predictable
+  - Easy to diagnose when lower-priority pods are being preempted
+- **Tradeoffs**: Requires setting priorityClassName on all deployments, but clearer operational model
+- **Date**: 2026-01-10
+- **Tiers**: system-node-critical (etcd) > infrastructure-high > workload-normal (default) > workload-low > best-effort
 
 ---
 
@@ -491,17 +553,30 @@ jobs:
     - ✅ GOOD: Backups are sacred - never delete without explicit user request
     - **Why**: Backups are the only disaster recovery option
 
-### 🔥 Node Kill Counter 🔥
+### 🔥 Cluster Kill Counter 🔥
 
-**Total Nodes Accidentally Destroyed by Claude**: 1
+**Full History: 6 Total Cluster Destruction Incidents**
+(See `docs/3-node-cluster-DR.md` for complete list including pre-2026 incidents)
 
-**Incidents:**
-1. **2026-01-02**: Accidentally ran `talosctl reset` on talos-gpu (.20) while trying to fix CNI networking issue after node rename. Should have just rebooted. Node wiped, required recovery.
+**Claude-Caused Incidents:**
+- **Total Nodes Accidentally Destroyed by Claude**: 1
+- **Total Cluster-Wide Failures Caused by Claude**: 2
+
+**Node Kill Incidents:**
+1. **2026-01-02**: Accidentally ran `talosctl reset` on talos-gpu (.20) while trying to fix CNI networking issue after node rename. Should have just rebooted. Node wiped, required recovery from scratch.
+
+**Cluster-Wide Failure Incidents:**
+1. **2025-12-29**: etcd quorum deadlock during 3-node migration (pre-this-session)
+2. **2026-01-03**: During talos-gpu recovery, failed to validate etcd auto-compaction configuration actually took effect. Applied machine config patch, saw "Applied configuration without a reboot", but didn't verify etcd logs. This left talos-gpu with broken etcd config (auto-compaction-retention: 0s instead of 5m), contributing to cluster fragility and 12+ hour etcd raft consensus deadlock. Entire cluster unavailable. Required physical power cycle of all nodes to recover.
 
 **Lessons Learned:**
 - NEVER use `talosctl reset` for "fixing" things - it's a WIPE operation
 - When nodes have networking issues after config changes, REBOOT don't RESET
 - The word "reset" in Talos means "factory reset" not "restart"
+- **ALWAYS validate configuration changes took effect** - Don't trust "Applied" messages
+- For etcd config changes: Check etcd logs immediately after applying to verify the new values
+- For node operations (reboot/shutdown): Check uptime to verify it actually happened
+- Pattern: Apply change → Verify it worked → Only then proceed
 
 ---
 
@@ -725,6 +800,26 @@ kubectl delete pvc test-storage
   - Deployed Prowlarr, Sonarr, Radarr with Traefik ingress + TLS
 **Key Learning**: Sometimes the simple solution (static PV) is better than fighting with complex dynamic provisioning
 
+### Session 6: Cluster Reliability & Self-Healing (Jan 10, 2026)
+**Problem**: Cluster constantly breaking, talos-gpu with etcd failing for 57+ hours
+**Root Causes**:
+  - Hard NFS mounts causing unkillable processes (D state) during slowdowns
+  - No health probes - broken pods remained in failed state indefinitely
+  - No pod priorities - media workloads could starve etcd
+  - I/O contention between Plex transcoding and etcd on same node
+**Solution**: Multi-layered reliability improvements
+  - Changed NFS mounts: hard → soft with timeouts (60s timeout, 2 retries, interruptible)
+  - Added health probes to all media applications (liveness + readiness)
+  - Implemented 5-tier pod priority system (etcd at highest, media at normal)
+  - Removed etcd from talos-gpu, converted to worker-only node
+  - Fixed Plex GPU support (added nvidia_modeset and nvidia_drm modules)
+**Result**:
+  - 2-node etcd cluster healthy and stable (talos-nuc + talos-mac)
+  - talos-gpu stable as worker (1% CPU vs 13+ load average before)
+  - All media pods self-healing with automatic restart
+  - NFS issues timeout after 2min instead of requiring hard reboot
+**Key Learning**: Address systemic fragility with multiple complementary fixes rather than band-aids
+
 ---
 
 ## Quick Reference
@@ -738,8 +833,10 @@ kubectl delete pvc test-storage
 - **TrueNAS SSH key**: `~/.ssh/truenas_csi` (never commit!)
 
 ### Important IPs & Hostnames
-- **Talos node**: 192.168.2.20 (sever-it01)
-- **Kubernetes API**: 192.168.2.20:6443
+- **talos-gpu** (worker): 192.168.2.20
+- **talos-nuc** (control-plane + etcd): 192.168.2.223
+- **talos-mac** (control-plane + etcd): 192.168.2.49
+- **Kubernetes API**: 192.168.2.223:6443 (VIP managed by nodes)
 - **TrueNAS**: 192.168.2.30
 - **MetalLB pool**: 192.168.2.100-192.168.2.110
 

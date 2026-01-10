@@ -13,6 +13,7 @@ spec:
       labels:
         app: prowlarr
     spec:
+      priorityClassName: workload-normal
       containers:
       - name: prowlarr
         image: linuxserver/prowlarr:latest
@@ -34,6 +35,22 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: 9696
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: 9696
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
         volumeMounts:
         - name: media-storage
           mountPath: /config

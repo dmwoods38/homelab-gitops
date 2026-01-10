@@ -266,11 +266,16 @@ talosctl --nodes 192.168.2.20 etcd snapshot /tmp/etcd-snapshot.db
 ## Cluster Destruction Counter
 Keep track of how many times the cluster had to be completely rebuilt:
 
-**Current Count: 3**
+**Current Count: 6** (now 3-node cluster - see docs/3-node-cluster-DR.md for full history)
 
 1. Initial cluster failure (pre-conversation)
 2. Failed prometheus/monitoring deployment overload
 3. Force-delete corruption requiring re-bootstrap
+4. etcd quorum deadlock during 3-node migration (2025-12-29)
+5. talosctl reset on talos-gpu - single node kill (2026-01-02)
+6. etcd auto-compaction failure - 12+ hour cluster outage (2026-01-03)
+
+**Note:** This guide is for single-node. For 3-node cluster DR, see `docs/3-node-cluster-DR.md`
 
 ## Recovery Time Estimates
 - **Bootstrap only:** 2-3 minutes

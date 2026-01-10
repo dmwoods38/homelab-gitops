@@ -12,7 +12,10 @@ spec:
     path: /mnt/default/media
   mountOptions:
     - nfsvers=4
-    - hard
+    - soft
+    - timeo=600
+    - retrans=2
+    - intr
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

@@ -4,16 +4,21 @@ GitOps-managed Kubernetes homelab running on Talos Linux with ArgoCD, featuring 
 
 ## Infrastructure Overview
 
-- **Cluster**: Single-node Talos Linux v1.11.5 with Kubernetes v1.34.1
-- **Node**: `sever-it01` at 192.168.2.20:6443
+- **Cluster**: 3-node HA Talos Linux v1.11.5 with Kubernetes v1.34.1
+  - **talos-nuc** (192.168.2.223): control-plane + etcd
+  - **talos-mac** (192.168.2.49): control-plane + etcd
+  - **talos-gpu** (192.168.2.20): worker node with NVIDIA GPU
+- **Architecture**: 2-node etcd quorum + dedicated GPU worker for stability
 - **GitOps**: ArgoCD managing all applications
 - **Storage**: TrueNAS SCALE 25.04.2.1 at 192.168.2.30
-  - NFS shared storage via democratic-csi
+  - Static NFS PV for media stack (1Ti)
+  - democratic-csi for other storage needs
 - **Load Balancer**: MetalLB in L2 mode
-- **Ingress**: Traefik
+- **Ingress**: Traefik with automatic TLS
 - **Certificates**: cert-manager with Let's Encrypt (Cloudflare DNS validation)
 - **Monitoring**: Prometheus + Grafana with etcd metrics
-- **Applications**: Complete media automation stack (Gluetun VPN + qBittorrent + Prowlarr/Sonarr/Radarr + Plex + Overseerr)
+- **Reliability**: Pod priority classes, health probes, soft NFS mounts for self-healing
+- **Applications**: Complete media automation stack (Gluetun VPN + qBittorrent + Prowlarr/Sonarr/Radarr + Plex with GPU transcoding + Overseerr/Bazarr)
 
 ## Repository Structure
 

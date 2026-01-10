@@ -16,6 +16,7 @@ spec:
       labels:
         app: bazarr
     spec:
+      priorityClassName: workload-normal
       containers:
       - name: bazarr
         image: linuxserver/bazarr:latest
@@ -46,6 +47,22 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 6767
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 6767
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
       volumes:
       - name: media-storage
         persistentVolumeClaim:

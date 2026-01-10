@@ -1,0 +1,39 @@
+---
+# NOTE: etcd uses built-in system-node-critical (value: 2000001000)
+# We don't create it here, it already exists
+---
+# High priority - critical infrastructure (ingress, DNS, storage)
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: infrastructure-high
+value: 100000
+globalDefault: false
+description: "For critical infrastructure services"
+---
+# Normal priority - regular workloads (media apps)
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: workload-normal
+value: 10000
+globalDefault: true
+description: "Default priority for regular application workloads"
+---
+# Low priority - can be evicted if resources needed
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: workload-low
+value: 1000
+globalDefault: false
+description: "For non-critical workloads that can be evicted under pressure"
+---
+# Best effort - lowest priority, first to be evicted
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: best-effort
+value: 100
+globalDefault: false
+description: "Lowest priority - will be evicted first when resources are scarce"

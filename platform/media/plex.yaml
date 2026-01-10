@@ -15,6 +15,7 @@ spec:
       labels:
         app: plex
     spec:
+      priorityClassName: workload-normal  # Can be preempted by system-critical if needed
       runtimeClassName: nvidia
       hostNetwork: true  # Required for Plex discovery
       containers:
@@ -70,6 +71,22 @@ spec:
             memory: "3Gi"
             cpu: "4000m"
             nvidia.com/gpu: "1"
+        livenessProbe:
+          httpGet:
+            path: /web/index.html
+            port: 32400
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /web/index.html
+            port: 32400
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         volumeMounts:
         - name: media-storage
           mountPath: /config

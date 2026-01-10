@@ -401,15 +401,25 @@ Standard Talos with no extensions.
 - **Complete rebuild + NVIDIA setup:** 30-45 minutes
 - **Complete rebuild + GPU + workloads:** 45-60 minutes
 
-## Cluster Destruction Counter: 4
+## Cluster Destruction Counter: 6
 
 Previous failures:
 1. Initial cluster failure (pre-existing)
 2. Prometheus/monitoring deployment overload
 3. Force-delete corruption requiring re-bootstrap
 4. **etcd quorum deadlock during 3-node migration** (2025-12-29)
+5. **talosctl reset on talos-gpu (.20) - single node kill** (2026-01-02)
+   - Attempted to fix CNI networking issue after node rename
+   - Used `talosctl reset` instead of reboot - wiped entire node
+   - Required full node recovery from scratch
+6. **etcd auto-compaction failure - 12+ hour cluster outage** (2026-01-03)
+   - During talos-gpu recovery, etcd auto-compaction config not validated
+   - Node rejoined with default etcd settings (no compaction, 2GB quota vs 4GB)
+   - Caused etcd database bloat leading to raft consensus deadlock
+   - Entire cluster unavailable for 12+ hours before discovery
+   - Required physical power cycle of all nodes to recover
 
-Current cluster built: 2025-12-29
+Current cluster built: 2025-12-29 (survived incidents 5-6 without full rebuild)
 
 ## Next Steps After DR
 
