@@ -419,6 +419,70 @@ ls /mnt/default/media/movies/
 - **Plex Support:** https://support.plex.tv/
 - **Servarr Wiki:** https://wiki.servarr.com/
 
+## Emergency: Database Corruption (Radarr/Sonarr)
+
+**Symptoms**: Application shows errors like `database disk image is malformed`, won't add downloads
+
+**Cause**: SQLite database corruption from power loss, unclean shutdown, or storage issues
+
+**Quick Recovery** (uses automatic backups):
+
+```bash
+# Example for Radarr (same steps for Sonarr)
+APP=radarr  # or sonarr
+
+# 1. Scale down
+kubectl scale deployment $APP -n media --replicas=0
+kubectl wait --for=delete pod -l app=$APP -n media --timeout=60s
+
+# 2. Restore from backup
+kubectl run -n media temp-$APP-fix --rm -i --image=busybox --restart=Never --overrides="{
+  \"spec\": {
+    \"securityContext\": {
+      \"runAsNonRoot\": true,
+      \"runAsUser\": 1000,
+      \"runAsGroup\": 1000,
+      \"fsGroup\": 1000,
+      \"seccompProfile\": {\"type\": \"RuntimeDefault\"}
+    },
+    \"containers\": [{
+      \"name\": \"fix\",
+      \"image\": \"busybox\",
+      \"securityContext\": {
+        \"allowPrivilegeEscalation\": false,
+        \"capabilities\": {\"drop\": [\"ALL\"]}
+      },
+      \"command\": [\"sh\", \"-c\", \"cd /config && cp ${APP}.db ${APP}.db.corrupt.backup && ls -lh Backups/scheduled/ && LATEST=\$(ls -t Backups/scheduled/*.zip | head -1) && unzip -o \$LATEST ${APP}.db && echo Database restored && ls -lh ${APP}.db* && sleep 10\"],
+      \"volumeMounts\": [{
+        \"name\": \"media-storage\",
+        \"mountPath\": \"/config\",
+        \"subPath\": \"$APP\"
+      }]
+    }],
+    \"volumes\": [{
+      \"name\": \"media-storage\",
+      \"persistentVolumeClaim\": {\"claimName\": \"media-nfs\"}
+    }]
+  }
+}"
+
+# 3. Scale back up
+kubectl scale deployment $APP -n media --replicas=1
+
+# 4. Verify
+kubectl logs -n media -l app=$APP --tail=50 | grep -i "error\|corrupt"
+```
+
+**What This Does**:
+- Backs up the corrupted database to `${APP}.db.corrupt.backup`
+- Extracts the most recent automatic backup from `Backups/scheduled/`
+- Restarts the application with the restored database
+
+**Backup Locations**:
+- Radarr: `/mnt/default/media/radarr/Backups/scheduled/`
+- Sonarr: `/mnt/default/media/sonarr/Backups/scheduled/`
+- Automatic backups created weekly by the applications
+
 ## Post-Recovery Checklist
 
 - [ ] All pods in `media` namespace are Running (1/1 or 2/2)

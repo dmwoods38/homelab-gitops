@@ -21,9 +21,9 @@ talosctl --nodes 192.168.2.20 get members
 
 | Node | IP | Hostname | Role | CPU | RAM | Disk | Factory Image | GPU |
 |------|-------|----------|------|-----|-----|------|---------------|-----|
-| **NUC .20** | 192.168.2.20 | talos-hfv-ykp | control-plane | ? | ? | /dev/nvme0n1 (256GB Intel) | NVIDIA (86a5d7c9...) | GTX 1650 |
-| **Node .223** | 192.168.2.223 | talos-6zg-d0c | control-plane | ? | ? | /dev/nvme0n1 (500GB Samsung) | Vanilla (ghcr.io) | None |
-| **Mac .49** | 192.168.2.49 | talos-qu2-nh1 | control-plane | ? | ? | /dev/sda (500GB Apple SSD) | Vanilla (ghcr.io) | None |
+| **NUC .20** | 192.168.2.20 | talos-gpu | worker | ? | ? | /dev/nvme0n1 (256GB Intel) | NVIDIA (86a5d7c9...) | GTX 1650 |
+| **Node .223** | 192.168.2.223 | talos-nuc | control-plane | ? | ? | /dev/nvme0n1 (500GB Samsung) | Vanilla (ghcr.io) | None |
+| **Mac .49** | 192.168.2.49 | talos-mac | control-plane | ? | ? | /dev/sda (500GB Apple SSD) | Vanilla (ghcr.io) | None |
 
 ## Software Versions
 
@@ -34,9 +34,9 @@ talosctl --nodes 192.168.2.20 get members
 
 ## etcd Configuration
 
-- **Quorum:** 2-of-3 (requires minimum 2 healthy nodes)
-- **Fault Tolerance:** Can survive 1 node failure
-- **Members:** 3 voting members
+- **Quorum:** 2-of-2 (requires minimum 2 healthy nodes)
+- **Fault Tolerance:** Can survive 0 node failures (both control-plane nodes required)
+- **Members:** 2 voting members (talos-nuc, talos-mac)
 - **Data Location:** `/var/lib/etcd` on each control plane node
 
 ## Factory Images Used
@@ -82,12 +82,10 @@ See [3-Node Cluster DR Guide](./3-node-cluster-DR.md#issue-node-stuck-in-booting
 ## Network Configuration
 
 **API Server Endpoints:**
-- 192.168.2.20:6443
-- 192.168.2.223:6443
-- 192.168.2.49:6443
+- 192.168.2.223:6443 (talos-nuc)
+- 192.168.2.49:6443 (talos-mac)
 
 **certSANs (must include all control plane IPs):**
-- 192.168.2.20
 - 192.168.2.223
 - 192.168.2.49
 

@@ -43,6 +43,8 @@ spec:
               key: WIREGUARD_ADDRESSES
         - name: FIREWALL_OUTBOUND_SUBNETS
           value: "192.168.0.0/16,10.0.0.0/8"
+        - name: FIREWALL_INPUT_PORTS
+          value: "6881"
         - name: HTTPPROXY
           value: "on"
         - name: SHADOWSOCKS

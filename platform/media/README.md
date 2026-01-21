@@ -479,6 +479,62 @@ kubectl exec -n media -l app=overseerr -- curl -s http://radarr.media.svc.cluste
 
 Check API keys are correct in Overseerr configuration.
 
+### Radarr/Sonarr Database Corruption
+
+**Symptoms**: Errors in logs like `database disk image is malformed`, app not adding downloads
+
+**Cause**: SQLite database corruption (often from power loss or unclean shutdown)
+
+**Recovery**:
+```bash
+# 1. Scale down the affected app
+kubectl scale deployment radarr -n media --replicas=0
+# (or sonarr instead of radarr)
+
+# 2. Wait for pod to terminate
+kubectl wait --for=delete pod -l app=radarr -n media --timeout=60s
+
+# 3. Restore from automatic backup
+kubectl run -n media temp-fix --rm -i --image=busybox --restart=Never --overrides='
+{
+  "spec": {
+    "securityContext": {
+      "runAsNonRoot": true,
+      "runAsUser": 1000,
+      "runAsGroup": 1000,
+      "fsGroup": 1000,
+      "seccompProfile": {"type": "RuntimeDefault"}
+    },
+    "containers": [{
+      "name": "fix",
+      "image": "busybox",
+      "securityContext": {
+        "allowPrivilegeEscalation": false,
+        "capabilities": {"drop": ["ALL"]}
+      },
+      "command": ["sh", "-c", "cd /config && cp radarr.db radarr.db.corrupt.backup && ls -lh Backups/scheduled/ && unzip -o Backups/scheduled/radarr_backup_*.zip radarr.db && echo Done && sleep 10"],
+      "volumeMounts": [{
+        "name": "media-storage",
+        "mountPath": "/config",
+        "subPath": "radarr"
+      }]
+    }],
+    "volumes": [{
+      "name": "media-storage",
+      "persistentVolumeClaim": {"claimName": "media-nfs"}
+    }]
+  }
+}'
+
+# 4. Scale back up
+kubectl scale deployment radarr -n media --replicas=1
+
+# 5. Verify working
+kubectl logs -n media -l app=radarr --tail=50
+```
+
+**Prevention**: Radarr and Sonarr create automatic backups to `/config/Backups/scheduled/`
+
 ## Security Considerations
 
 1. **VPN**: All download traffic routes through VPN (verified by IP check)
