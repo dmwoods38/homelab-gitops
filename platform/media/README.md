@@ -535,6 +535,55 @@ kubectl logs -n media -l app=radarr --tail=50
 
 **Prevention**: Radarr and Sonarr create automatic backups to `/config/Backups/scheduled/`
 
+### BitTorrent Downloads Not Working / Torrents Stalled
+
+**Symptoms**: Radarr/Sonarr show downloads as "stalled with no connections", no progress on torrents, zero successful downloads
+
+**Root Cause**: Missing VPN port forwarding configuration prevents incoming peer connections
+
+**Critical Configuration**: The Gluetun deployment MUST include these environment variables:
+```yaml
+- name: VPN_PORT_FORWARDING
+  value: "on"
+- name: VPN_PORT_FORWARDING_PROVIDER
+  value: "protonvpn"
+```
+
+**Why this matters**: Without port forwarding enabled, qBittorrent can only make outbound connections to peers. Most swarms require incoming connections for acceptable download speeds. Even though ProtonVPN officially dropped port forwarding support in 2023, Gluetun's port forwarding mode enables NAT-PMP/UPnP that allows better peer connectivity.
+
+**Diagnosis**:
+```bash
+# 1. Check if port forwarding is enabled
+kubectl exec -n media deployment/gluetun -c gluetun -- printenv VPN_PORT_FORWARDING
+# Should output: on
+
+# 2. Check gluetun logs for port forwarding
+kubectl logs -n media deployment/gluetun -c gluetun | grep -i "port forwarding"
+# Should see: INFO [port forwarding] starting
+
+# 3. Check Radarr queue for stalled downloads
+kubectl logs -n media deployment/radarr | grep -i stalled
+# Will show: "The download is stalled with no connections"
+```
+
+**Fix**: If VPN_PORT_FORWARDING is not set:
+```bash
+# 1. Edit gluetun-qbittorrent.yaml to add the environment variables
+# (under WIREGUARD_ADDRESSES, before FIREWALL_OUTBOUND_SUBNETS)
+
+# 2. Apply changes
+kubectl apply -f platform/media/gluetun-qbittorrent.yaml
+
+# 3. Restart deployment
+kubectl rollout restart deployment/gluetun -n media
+kubectl rollout status deployment/gluetun -n media
+
+# 4. Verify port forwarding started
+kubectl logs -n media deployment/gluetun -c gluetun | grep "port forwarding"
+```
+
+**Historical Note**: This configuration was working Dec 11-21, 2025 (40+ successful downloads). On Dec 21, commit 300462e switched to custom WireGuard mode and accidentally removed the port forwarding settings, breaking all downloads. Restored Jan 24, 2026.
+
 ## Security Considerations
 
 1. **VPN**: All download traffic routes through VPN (verified by IP check)
