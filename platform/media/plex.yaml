@@ -34,6 +34,8 @@ spec:
           value: "all"
         - name: NVIDIA_DRIVER_CAPABILITIES
           value: "all"
+        - name: PLEX_TRANSCODER_TEMP_DIRECTORY
+          value: "/transcode"
         ports:
         - containerPort: 32400
           name: plex
@@ -99,13 +101,16 @@ spec:
           mountPath: /movies
           subPath: movies
           readOnly: true
-        - name: media-storage
+        - name: transcode-cache
           mountPath: /transcode
-          subPath: plex-transcode
       volumes:
       - name: media-storage
         persistentVolumeClaim:
           claimName: media-nfs
+      - name: transcode-cache
+        emptyDir:
+          medium: Memory
+          sizeLimit: "8Gi"
 ---
 apiVersion: v1
 kind: Service

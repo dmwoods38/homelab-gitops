@@ -2,19 +2,19 @@
 
 This document helps AI agents (Claude Code) maintain context across sessions and provides guidelines for smooth development workflow.
 
-**Last Updated**: 2026-01-10
-**Current Session**: Cluster reliability improvements - etcd HA tuning and self-healing workloads
+**Last Updated**: 2026-01-31
+**Current Session**: etcd split-brain recovery, talos-mac conversion to worker, Plex subtitle fix
 
 ---
 
 ## Current System State
 
 ### Infrastructure Status
-- **Cluster**: Talos Linux v1.11.5, Kubernetes v1.34.1, 3-node HA architecture
-  - **talos-nuc** (192.168.2.223): control-plane + etcd
-  - **talos-mac** (192.168.2.49): control-plane + etcd
-  - **talos-gpu** (192.168.2.20): worker-only (etcd removed for stability)
-- **etcd**: 2-node quorum (nuc + mac) - removed from GPU node due to I/O contention
+- **Cluster**: Talos Linux v1.11.5, Kubernetes v1.34.1, 3-node architecture
+  - **talos-nuc** (192.168.2.223): sole control-plane + single-node etcd
+  - **talos-mac** (192.168.2.49): worker (converted from control-plane 2026-01-31)
+  - **talos-gpu** (192.168.2.20): worker (etcd removed 2026-01-10 for I/O stability)
+- **etcd**: Single-node on talos-nuc only. Previous 2-node quorum (nuc + mac) suffered split-brain after talos-mac etcd member was killed. Recovered via `--force-new-cluster` extraArgs + physical power cycle.
 - **GitOps**: ArgoCD deployed and self-managing
 - **Storage**: Static NFS PV (1Ti) for media stack (democratic-csi has compatibility issues with Talos)
 - **Monitoring**: Prometheus + Grafana with etcd metrics
@@ -30,7 +30,8 @@ Due to SOPS encryption in Application manifests:
 - **cert-manager secrets**: `sops -d platform/cert-manager/secret-cloudflare-api-token.sops.yaml | kubectl apply -f -`
 
 ### What's Working
-- ✅ 3-node HA cluster stable (2-node etcd + 1 worker architecture)
+- ✅ 3-node cluster stable (1 control-plane + 2 workers)
+- ✅ Single-node etcd on talos-nuc (stable, no quorum fragility)
 - ✅ etcd monitoring and defragmentation procedures
 - ✅ Storage provisioning (iSCSI block + NFS shared)
 - ✅ All platform services deployed with health probes
@@ -39,73 +40,61 @@ Due to SOPS encryption in Application manifests:
 - ✅ Soft NFS mounts preventing unkillable processes
 - ✅ TLS certificates automated
 - ✅ SOPS encryption for all secrets
-- ✅ Plex GPU transcoding on dedicated worker node
+- ✅ Plex GPU transcoding with local tmpfs transcode cache (fixes subtitle errors)
 
 ### Known Issues
 1. **ArgoCD SOPS Limitation**: KSOPS plugin only works with Kustomize, not Application manifests
 2. **Manual Deployment Steps**: democratic-csi requires kubectl apply after SOPS decryption
 3. **No App of Apps**: Applications not organized with dependency management
-4. **2-node etcd**: Can only tolerate 1 control-plane failure (not 2), acceptable for homelab
+4. **Single-node etcd**: No etcd redundancy. talos-nuc failure = full cluster outage. Acceptable for homelab but etcd backups are critical (P2 task).
+5. **Pre-existing pod errors** (29 days old, not caused by recent changes): argocd-dex-server, cert-manager-cainjector, flaresolverr
 
 ---
 
 ## Current Session Focus
 
-**Status**: ✅ COMPLETED - Cluster Reliability Improvements & Self-Healing Workloads
+**Status**: ✅ COMPLETED - etcd Split-Brain Recovery + Plex Subtitle Fix (2026-01-31)
 
-**What Was Accomplished** (Session: 2026-01-10):
-- ✅ **Fixed NFS mount fragility**: Changed from hard to soft mounts with timeouts to prevent unkillable processes
-  - Platform services using hard NFS mounts would enter uninterruptible sleep (D state) during NFS slowdowns
-  - Required hard reboots to recover
-  - Solution: soft mounts with 60s timeout, 2 retries, interruptible mode
-- ✅ **Added health probes to all media applications**: Liveness and readiness probes for automatic restart
-  - Plex, Prowlarr, Sonarr, Radarr, Bazarr, Overseerr all now self-healing
-  - Prevents failed pods from remaining in broken state
-- ✅ **Implemented pod priority classes**: Protect etcd from resource starvation
-  - system-node-critical (2000001000) - etcd and core system components
-  - infrastructure-high (100000) - ingress, DNS, storage controllers
-  - workload-normal (10000) - media applications (default)
-  - workload-low (1000) - non-critical workloads
-  - best-effort (100) - lowest priority, first to evict
-- ✅ **Removed etcd from talos-gpu**: Converted problematic GPU node from control-plane to worker-only
-  - talos-gpu had been failing for 57+ hours with etcd issues (load average 13 on 8 cores)
-  - Root cause: I/O contention between Plex transcoding and etcd consensus
-  - Solution: 2-node etcd cluster (talos-nuc + talos-mac) with worker-only GPU node
-  - Result: talos-gpu now stable at 1% CPU, 8% memory
-- ✅ **Fixed Plex GPU support**: Added missing NVIDIA kernel modules
-  - nvidia_modeset and nvidia_drm modules required for /dev/nvidia-modeset device
-  - Plex now successfully using GPU transcoding on talos-gpu
+**What Was Accomplished**:
 
-**Architecture Changes**:
-- **Old**: 3-node cluster with etcd on all nodes (fragile, I/O conflicts)
-- **New**: 2-node etcd + 1 worker architecture
-  - talos-nuc (192.168.2.223): control-plane + etcd + media workloads
-  - talos-mac (192.168.2.49): control-plane + etcd
-  - talos-gpu (192.168.2.20): worker-only + Plex with GPU transcoding
+### etcd Split-Brain Recovery
+- The 2-node etcd quorum (talos-nuc + talos-mac) suffered a split-brain after the talos-mac etcd member was killed (third member had already been removed in a prior session). With 2-of-2 quorum, neither node could elect a leader.
+- **talos-mac converted to worker**: Applied worker config via `talosctl apply-config`. This removed etcd from talos-mac but left the stale member in talos-nuc's etcd member list.
+- **Reboot deadlock**: Talos graceful shutdown sequence tries to stop all pods → needs API server → needs etcd (broken). Remote reboot hung indefinitely. Only physical power cycle could break this.
+- **Recovery via force-new-cluster**: Added `force-new-cluster: "true"` to `cluster.etcd.extraArgs` in talos-nuc machine config. This change could be applied WITHOUT reboot (just an etcd arg change). After user physically power-cycled the NUC, etcd started as a healthy single-node cluster.
+- **Cleanup**: Removed force-new-cluster flag, verified etcd member list (only talos-nuc), confirmed kubectl working.
 
-**Current Pod Distribution**:
-- **talos-gpu** (worker): Plex with GPU transcoding (1% CPU, 8% memory)
-- **talos-nuc** (control-plane): All *arr apps (Prowlarr, Sonarr, Radarr, Bazarr, Overseerr)
-- **talos-mac** (control-plane): Gluetun+qBittorrent, Flaresolverr
+### talos-mac Worker Config Fix
+- After conversion, flannel and metallb on talos-mac crashed: `dial tcp 127.0.0.1:7445: connect: connection refused`
+- Root cause: Worker config was missing `machine.features` section (kubePrism not enabled on workers)
+- Fix: Added full `features` block (kubePrism port 7445, hostDNS, etc.) to worker config and reapplied.
 
-**Cluster Health**:
-- etcd: 2-node quorum, both members healthy and in sync
-- All media pods: Running with health probes and priority classes
-- Resource usage: Low and stable across all nodes
+### Plex Subtitle/Transcoder Fix
+- **User-reported issue**: Transcoder errors when enabling subtitles
+- **Root cause**: Plex transcode session directory was on NFS (`/config` → `192.168.2.30:/mnt/default/media/plex`). Two failure modes:
+  1. `temp-0.srt: No such file or directory` — NFS write consistency delay meant the subtitle temp file wasn't visible to ffmpeg before it tried to open it
+  2. `TPU: Failed to download sub-stream to temporary file` — Same NFS issue on retries; also one episode (metadata/208) had a missing subtitle stream (404 on `/library/streams/6702`)
+  3. `.nfs*` lock files blocked session directory cleanup, compounding failures
+- **Fix** (`platform/media/plex.yaml`):
+  - Replaced `/transcode` NFS subpath volume with `emptyDir` backed by tmpfs (8Gi limit)
+  - Added `PLEX_TRANSCODER_TEMP_DIRECTORY=/transcode` env var
+  - Transcode cache is ephemeral by nature — doesn't need to persist across restarts
 
-**Files Created/Modified**:
-- `platform/priority-classes.yaml` - New pod priority class definitions
-- `platform/media/*.yaml` - Added health probes, priority classes, resource limits to all media apps
-- `platform/media/media-storage.yaml` - Changed NFS mount from hard to soft
-- `docs/3-node-cluster-DR.md` - Updated with current architecture
-- `docs/cluster-bootstrap.md` - Updated bootstrap procedures
-- `/tmp/talos-gpu-worker.yaml` - GPU worker config with nvidia_modeset and nvidia_drm modules
+**Architecture (current)**:
+- talos-nuc (192.168.2.223): sole control-plane, single-node etcd
+- talos-mac (192.168.2.49): worker
+- talos-gpu (192.168.2.20): worker + Plex GPU transcoding
+
+**Files Modified This Session**:
+- `platform/media/plex.yaml` - Replaced NFS transcode volume with tmpfs emptyDir, added PLEX_TRANSCODER_TEMP_DIRECTORY
+- `talos/machine-configs/controlplane1.sops.yaml` - Needs re-encrypt for talos-nuc (hostname, endpoint, certSANs changes)
+- `talos/machine-configs/worker.sops.yaml` - Needs re-encrypt for talos-mac worker config (features section added)
+- `AGENTS.md` - This file
 
 **Next Session Recommendations**:
-1. Monitor cluster stability over time to verify self-healing improvements
-2. Consider automated etcd backups (P2 priority task)
-3. Test priority class preemption under resource pressure
-4. Continue with arr application configuration (indexers, download clients)
+1. **P2: etcd automated backups** — Single-node etcd means zero redundancy. Backups are now critical.
+2. Investigate the 3 pre-existing pod errors (argocd-dex-server, cert-manager-cainjector, flaresolverr) when convenient
+3. Consider whether single-node etcd risk is acceptable long-term or if a second control-plane should be added back
 
 ---
 
@@ -250,11 +239,22 @@ None currently - system is stable
   - GPU node suffered chronic etcd failures (57+ hours broken, load average 13 on 8 cores)
   - Root cause: I/O contention between Plex transcoding and etcd raft consensus
   - Even with CPU/memory limits, disk I/O starvation caused etcd timeouts
-  - 2-node etcd quorum is sufficient for homelab HA requirements
   - Separates concerns: GPU workloads vs cluster consensus
-- **Tradeoffs**: Can only lose 1 control-plane node (not 2), but GPU node now stable
+- **Tradeoffs**: Reduced etcd to 2-node quorum (nuc + mac), which later proved fragile (see session 7)
 - **Date**: 2026-01-10
 - **Implementation**: Used `talosctl apply-config` with worker config + GPU patches, removed etcd member
+- **Follow-up (2026-01-31)**: 2-node etcd suffered split-brain when talos-mac member was killed. talos-mac converted to worker. etcd now single-node on talos-nuc only.
+
+### Why convert talos-mac to worker and run single-node etcd?
+- **Decision**: Convert talos-mac from control-plane to worker after 2-node etcd split-brain
+- **Rationale**:
+  - 2-node etcd quorum requires both members alive — killing one makes recovery impossible without force-new-cluster
+  - Single-node etcd has no quorum math — it's either up or down, and recovery is simpler
+  - For a homelab, single-node etcd with good backups is more reliable than fragile 2-node quorum
+  - talos-mac was not contributing meaningful HA value as a second control-plane
+- **Tradeoffs**: Zero etcd redundancy. talos-nuc failure = full cluster outage. Mitigated by etcd backup strategy (P2 task).
+- **Date**: 2026-01-31
+- **Recovery method**: `cluster.etcd.extraArgs.force-new-cluster: "true"` applied via machine config (no reboot needed), then physical power cycle to activate
 
 ### Why change NFS mounts from hard to soft?
 - **Decision**: Use soft NFS mounts with timeout instead of hard mounts
@@ -555,7 +555,7 @@ jobs:
 
 ### 🔥 Cluster Kill Counter 🔥
 
-**Full History: 6 Total Cluster Destruction Incidents**
+**Full History: 7 Total Cluster Destruction Incidents**
 (See `docs/3-node-cluster-DR.md` for complete list including pre-2026 incidents)
 
 **Claude-Caused Incidents:**
@@ -568,6 +568,7 @@ jobs:
 **Cluster-Wide Failure Incidents:**
 1. **2025-12-29**: etcd quorum deadlock during 3-node migration (pre-this-session)
 2. **2026-01-03**: During talos-gpu recovery, failed to validate etcd auto-compaction configuration actually took effect. Applied machine config patch, saw "Applied configuration without a reboot", but didn't verify etcd logs. This left talos-gpu with broken etcd config (auto-compaction-retention: 0s instead of 5m), contributing to cluster fragility and 12+ hour etcd raft consensus deadlock. Entire cluster unavailable. Required physical power cycle of all nodes to recover.
+3. **2026-01-31**: etcd split-brain after talos-mac etcd member was killed (third member had already been removed). 2-of-2 quorum = no leader possible. NOT caused by Claude — the member kill was a prior manual action. Recovery required: (a) adding `force-new-cluster: "true"` to etcd extraArgs via machine config, (b) two physical power cycles of talos-nuc by user. Key blocker: Talos graceful reboot sequence deadlocks when etcd is down (stopAllPods needs API server needs etcd).
 
 **Lessons Learned:**
 - NEVER use `talosctl reset` for "fixing" things - it's a WIPE operation
@@ -577,6 +578,9 @@ jobs:
 - For etcd config changes: Check etcd logs immediately after applying to verify the new values
 - For node operations (reboot/shutdown): Check uptime to verify it actually happened
 - Pattern: Apply change → Verify it worked → Only then proceed
+- **2-node etcd is fragile** — if one member is killed, the cluster is completely stuck. Single-node etcd avoids this specific failure mode (no quorum math).
+- **Talos reboot deadlock** — graceful shutdown requires API server which requires etcd. If etcd is broken, the ONLY recovery path is physical power cycle. etcd extraArgs changes (like force-new-cluster) CAN be applied without reboot and will take effect on next boot.
+- **etcd `--force-new-cluster`** — forces etcd to start as single-node from existing data, ignoring member list. The recovery tool for split-brain scenarios.
 
 ---
 
@@ -820,6 +824,21 @@ kubectl delete pvc test-storage
   - NFS issues timeout after 2min instead of requiring hard reboot
 **Key Learning**: Address systemic fragility with multiple complementary fixes rather than band-aids
 
+### Session 7: etcd Split-Brain Recovery + Plex Fix (Jan 31, 2026)
+**Problem**: etcd split-brain (2-node quorum with one member killed) made entire cluster unreachable. User also reported Plex transcoder errors when enabling subtitles.
+**Root Causes**:
+  - etcd: 2-of-2 quorum impossible after one member killed. No leader election possible.
+  - Plex subtitles: Transcode session directory on NFS caused race conditions writing temp `.srt` files and `.nfs*` lock files blocking cleanup.
+**Solution**:
+  - etcd: Applied `force-new-cluster: "true"` to `cluster.etcd.extraArgs` (no reboot needed for this change). User physically power-cycled NUC twice. etcd started as healthy single-node cluster.
+  - talos-mac: Converted to worker. Fixed missing `machine.features` section (kubePrism) that caused flannel/metallb crashes post-conversion.
+  - Plex: Replaced `/transcode` NFS volume with tmpfs `emptyDir` (8Gi). Added `PLEX_TRANSCODER_TEMP_DIRECTORY=/transcode` env var. Transcode cache now fully local.
+**Key Learning**:
+  - 2-node etcd is a single point of failure disguised as redundancy
+  - Talos graceful reboot deadlocks when etcd is down — physical power cycle is the only recovery
+  - NFS is unsuitable for transcode caches due to write consistency and lock file issues
+  - etcd extraArgs changes apply without reboot in Talos (useful for recovery scenarios)
+
 ---
 
 ## Quick Reference
@@ -834,8 +853,8 @@ kubectl delete pvc test-storage
 
 ### Important IPs & Hostnames
 - **talos-gpu** (worker): 192.168.2.20
-- **talos-nuc** (control-plane + etcd): 192.168.2.223
-- **talos-mac** (control-plane + etcd): 192.168.2.49
+- **talos-nuc** (sole control-plane + etcd): 192.168.2.223
+- **talos-mac** (worker): 192.168.2.49
 - **Kubernetes API**: 192.168.2.223:6443 (VIP managed by nodes)
 - **TrueNAS**: 192.168.2.30
 - **MetalLB pool**: 192.168.2.100-192.168.2.110
