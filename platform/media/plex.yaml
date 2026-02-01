@@ -94,6 +94,9 @@ spec:
               - /bin/bash
               - -c
               - |
+                # Copy custom client profiles before Plex loads them
+                cp "/config/Library/Application Support/Plex Media Server/Profiles/"*.xml \
+                  /usr/lib/plexmediaserver/Resources/Profiles/ 2>/dev/null || true
                 # Wait for Plex to write Preferences.xml and become ready
                 for i in $(seq 1 60); do
                   if curl -sf http://127.0.0.1:32400/web/index.html >/dev/null 2>&1; then
