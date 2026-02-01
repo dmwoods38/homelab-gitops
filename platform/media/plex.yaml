@@ -18,6 +18,20 @@ spec:
       priorityClassName: workload-normal  # Can be preempted by system-critical if needed
       runtimeClassName: nvidia
       hostNetwork: true  # Required for Plex discovery
+      initContainers:
+      - name: copy-profiles
+        image: linuxserver/plex:latest
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          cp /usr/lib/plexmediaserver/Resources/Profiles/*.xml /profiles/
+          cp "/config/Library/Application Support/Plex Media Server/Profiles/"*.xml /profiles/ 2>/dev/null || true
+        volumeMounts:
+        - name: profiles
+          mountPath: /profiles
+        - name: media-storage
+          mountPath: /config
+          subPath: plex
       containers:
       - name: plex
         image: linuxserver/plex:latest
@@ -34,6 +48,8 @@ spec:
           value: "all"
         - name: NVIDIA_DRIVER_CAPABILITIES
           value: "all"
+        - name: LIBVA_DRIVER_NAME
+          value: "nvidia"
         ports:
         - containerPort: 32400
           name: plex
@@ -94,9 +110,8 @@ spec:
               - /bin/bash
               - -c
               - |
-                # Copy custom client profiles before Plex loads them
-                cp "/config/Library/Application Support/Plex Media Server/Profiles/"*.xml \
-                  /usr/lib/plexmediaserver/Resources/Profiles/ 2>/dev/null || true
+                # Install NVIDIA VA-API driver for hardware transcoding
+                apt-get update -qq >/dev/null 2>&1 && apt-get install -y -qq nvidia-vaapi-driver >/dev/null 2>&1
                 # Wait for Plex to write Preferences.xml and become ready
                 for i in $(seq 1 60); do
                   if curl -sf http://127.0.0.1:32400/web/index.html >/dev/null 2>&1; then
@@ -122,12 +137,16 @@ spec:
           mountPath: /movies
           subPath: movies
           readOnly: true
+        - name: profiles
+          mountPath: /usr/lib/plexmediaserver/Resources/Profiles
         - name: transcode-cache
           mountPath: /transcode
       volumes:
       - name: media-storage
         persistentVolumeClaim:
           claimName: media-nfs
+      - name: profiles
+        emptyDir: {}
       - name: transcode-cache
         emptyDir:
           medium: Memory
