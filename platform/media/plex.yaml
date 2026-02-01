@@ -64,11 +64,11 @@ spec:
           protocol: TCP
         resources:
           requests:
-            memory: "1Gi"
+            memory: "2Gi"
             cpu: "1000m"
             nvidia.com/gpu: "1"
           limits:
-            memory: "3Gi"
+            memory: "6Gi"
             cpu: "4000m"
             nvidia.com/gpu: "1"
         livenessProbe:
