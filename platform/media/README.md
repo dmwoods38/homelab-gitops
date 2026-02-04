@@ -302,10 +302,11 @@ All services accessible via Traefik with TLS:
 4. **Add Libraries**:
    - TV Shows: `/tv`
    - Movies: `/movies`
-5. **Enable Hardware Transcoding**:
-   - Settings → Transcoder
-   - Check "Use hardware acceleration when available"
-   - Transcoder temporary directory: `/transcode`
+5. **Verify Hardware Transcoding** (auto-enabled by postStart hook):
+   - Settings → Transcoder → should show "Use hardware acceleration when available" checked
+   - Transcoder temporary directory should be `/transcode`
+   - If not enabled, the postStart hook will enable it on next pod restart
+   - Manual enable via API: `curl -sf -X PUT "http://localhost:32400/:/prefs?HardwareAcceleratedCodecs=1&HardwareAcceleratedEncoders=1&X-Plex-Token=<TOKEN>"`
 6. **Verify GPU is working**:
    - Play a video that requires transcoding
    - Check logs: `kubectl logs -n media -l app=plex | grep -i nvidia`

@@ -119,11 +119,14 @@ spec:
                   fi
                   sleep 5
                 done
-                # Extract token and set TranscoderTempDirectory via API
+                # Extract token and configure transcoding via API
                 TOKEN=$(grep -oP 'PlexOnlineToken="\K[^"]+' "/config/Library/Application Support/Plex Media Server/Preferences.xml")
                 if [ -n "$TOKEN" ]; then
-                  curl -s -X PUT "http://127.0.0.1:32400/settings/transcoderTempDirectory" \
-                    -H "X-Plex-Token: $TOKEN" -d '/transcode'
+                  # Set transcode temp directory
+                  curl -sf -X PUT "http://127.0.0.1:32400/:/prefs?TranscoderTempDirectory=/transcode&X-Plex-Token=$TOKEN"
+                  # Enable hardware transcoding (GPU acceleration)
+                  curl -sf -X PUT "http://127.0.0.1:32400/:/prefs?HardwareAcceleratedCodecs=1&X-Plex-Token=$TOKEN"
+                  curl -sf -X PUT "http://127.0.0.1:32400/:/prefs?HardwareAcceleratedEncoders=1&X-Plex-Token=$TOKEN"
                 fi
         volumeMounts:
         - name: media-storage
