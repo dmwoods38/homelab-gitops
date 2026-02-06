@@ -310,6 +310,11 @@ All services accessible via Traefik with TLS:
 6. **Verify GPU is working**:
    - Play a video that requires transcoding
    - Check logs: `kubectl logs -n media -l app=plex | grep -i nvidia`
+7. **Xbox Client Subtitle Configuration** (recommended):
+   - On Xbox Plex app: Settings → Player → **Burn Subtitles** → set to **"Always"**
+   - This forces subtitles to be burned into the video stream server-side
+   - Fixes DASH streaming race condition that causes subtitle errors on seek/enable
+   - Options: "Automatic" (default), "Only image formats", "Always"
 
 ### 6. Overseerr Configuration
 
@@ -466,6 +471,26 @@ kubectl label node <node-name> nvidia.com/gpu.present=true
 
 # Check node resources
 kubectl describe node <node-name> | grep nvidia.com/gpu
+```
+
+### Xbox Subtitle Errors (500 errors, subtitles not loading)
+
+**Symptom:** Subtitles fail to load, show 500 errors, or break when seeking/enabling mid-stream.
+
+**Cause:** DASH streaming race condition - when subtitles are delivered as sidecar segments, seeking or enabling subtitles mid-stream can cause the subtitle sub-session to be cleaned up before chunks are served.
+
+**Fix:** Force subtitle burn-in on the Xbox client:
+1. Xbox Plex app → Settings → Player → **Burn Subtitles**
+2. Change from "Automatic" to **"Always"**
+
+This burns subtitles into the video stream server-side, avoiding the sidecar race condition.
+
+**Note:** Server-side profile matching (`Plex for Xbox.xml`) does not work reliably because modern Plex clients send their own capability profiles via HTTP headers, overriding server-side profiles.
+
+Check current subtitle decision during playback:
+```bash
+kubectl exec -n media deployment/plex -- curl -sf "http://localhost:32400/status/sessions?X-Plex-Token=<TOKEN>" | grep -oE 'subtitleDecision="[^"]*"'
+# Should show: subtitleDecision="burn" (not "copy")
 ```
 
 ### Overseerr Can't Connect to Sonarr/Radarr
