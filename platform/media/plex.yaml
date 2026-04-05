@@ -32,6 +32,8 @@ spec:
         - name: media-storage
           mountPath: /config
           subPath: plex
+        - name: xbox-profiles
+          mountPath: /xbox-profiles
       containers:
       - name: plex
         image: linuxserver/plex:latest
@@ -48,8 +50,6 @@ spec:
           value: "all"
         - name: NVIDIA_DRIVER_CAPABILITIES
           value: "all"
-        - name: LIBVA_DRIVER_NAME
-          value: "nvidia"
         ports:
         - containerPort: 32400
           name: plex

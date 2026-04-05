@@ -148,6 +148,7 @@ These configurations exist only in the running pods and must be reconfigured aft
 - Library definitions (TV Shows: `/tv`, Movies: `/movies`)
 - GPU transcoding enabled
 - Watch history, user accounts
+- Custom Xbox client profiles (see [Xbox Profile Customizations](#xbox-profile-customizations) below)
 
 **Overseerr:**
 - Plex server connection
@@ -482,6 +483,38 @@ kubectl logs -n media -l app=$APP --tail=50 | grep -i "error\|corrupt"
 - Radarr: `/mnt/default/media/radarr/Backups/scheduled/`
 - Sonarr: `/mnt/default/media/sonarr/Backups/scheduled/`
 - Automatic backups created weekly by the applications
+
+## Xbox Profile Customizations
+
+Two Plex client profiles are customized from their defaults and stored on the NFS PVC at:
+```
+/mnt/default/media/plex/Library/Application Support/Plex Media Server/Profiles/
+```
+
+The init container copies these over the built-in profiles on pod start. After a fresh PVC restore these files must be recreated manually.
+
+### `Plex for Xbox.xml`
+Entirely custom profile (no default equivalent). Adds `subtitles="burn"` across all transcode and direct play targets to force subtitle burn-in and avoid a DASH race condition on Xbox.
+
+### `Xbox One S.xml`
+Based on the default Plex profile. Two changes from the default:
+
+1. **`subtitles="burn"`** added to all `TranscodeTargets` and `DirectPlayProfiles` entries (same reason as above).
+
+2. **`TranscodeTargetProfiles`** — changed `protocol="*"` to explicit `protocol="dash"` and `protocol="hls"` entries. The `*` wildcard causes Plex v1.43+ to fail with `implementation for video encoder '*' not found` because the new version matches the Xbox One S profile by model name and then interprets the wildcard literally.
+
+To recreate after a PVC restore:
+```bash
+PLEX_POD=$(kubectl get pod -n media -l app=plex -o jsonpath='{.items[0].metadata.name}')
+PROFILES_DIR="/config/Library/Application Support/Plex Media Server/Profiles"
+
+# Plex for Xbox - copy and add subtitles="burn" to all VideoProfile entries,
+# then remove the TranscodeTargetProfiles section entirely.
+
+# Xbox One S - copy the built-in profile, add subtitles="burn" to all VideoProfile
+# entries, and replace the single protocol="*" VideoTranscodeTarget with two
+# explicit entries: protocol="dash" and protocol="hls".
+```
 
 ## Post-Recovery Checklist
 
